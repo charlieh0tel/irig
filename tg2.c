@@ -303,8 +303,7 @@ struct progx progy[] = {
  * IRIG format first frame, frame 1 - seconds
  */
 struct progx progz[] = {
-    {MIN,
-     M8}, /* 0 PI (on-time marker for the second at zero cross of 1st cycle) */
+    {MIN, M8},  /* 0 PI (on-time marker for the second at zero cross of 1st cycle) */
     {COEF, 1},  /* 1 1 units */
     {COEF, 2},  /* 2 2 */
     {COEF, 4},  /* 3 4 */
@@ -325,15 +324,14 @@ struct progx progz[] = {
 /*
  * Forward declarations
  */
-void WWV_Second(int, int);       /* send second */
-void WWV_SecondNoTick(int, int); /* send second with no tick */
-void digit(int);                 /* encode digit */
-void peep(int, int, int);        /* send cycles */
-void poop(int, int, int, int);   /* Generate unmodulated from similar tables */
-void delay(int);                 /* delay samples */
-int ConvertMonthDayToDayOfYear(
-    int, int, int); /* Calc day of year from year month & day */
-void Help(void);    /* Usage message */
+void WWV_Second(int, int);                     /* send second */
+void WWV_SecondNoTick(int, int);               /* send second with no tick */
+void digit(int);                               /* encode digit */
+void peep(int, int, int);                      /* send cycles */
+void poop(int, int, int, int);                 /* Generate unmodulated from similar tables */
+void delay(int);                               /* delay samples */
+int ConvertMonthDayToDayOfYear(int, int, int); /* Calc day of year from year month & day */
+void Help(void);                               /* Usage message */
 void ReverseString(char *);
 
 /*
@@ -374,26 +372,23 @@ int TotalCyclesRemoved = 0;
 int main(int argc,   /* command line options */
          char **argv /* poiniter to list of tokens */
 ) {
-  struct timeval TimeValue; /* System clock at startup */
-  time_t SecondsPartOfTime; /* Sent to gmtime() for calculation of TimeStructure
-                               (can apply offset). */
-  time_t
-      BaseRealTime; /* Base realtime so can determine seconds since starting. */
-  time_t NowRealTime; /* New realtime to can determine seconds as of now. */
+  struct timeval TimeValue;              /* System clock at startup */
+  time_t SecondsPartOfTime;              /* Sent to gmtime() for calculation of TimeStructure
+                                            (can apply offset). */
+  time_t BaseRealTime;                   /* Base realtime so can determine seconds since starting. */
+  time_t NowRealTime;                    /* New realtime to can determine seconds as of now. */
   unsigned SecondsRunningRealTime;       /* Difference between NowRealTime and
                                             BaseRealTime. */
   unsigned SecondsRunningSimulationTime; /* Time that the simulator has been
                                             running. */
-  int SecondsRunningDifference; /* Difference between what real time says we
-                                   have been running */
+  int SecondsRunningDifference;          /* Difference between what real time says we
+                                            have been running */
   /* and what simulator says we have been running - will slowly  */
   /* change because of clock drift. */
-  int ExpectedRunningDifference = 0; /* Stable value that we've obtained from
-                                        check at initial start-up.	*/
-  unsigned
-      StabilityCount; /* Used to check stability of difference while starting */
-#define RUN_BEFORE_STABILITY_CHECK \
-  (30)  // Must run this many seconds before even checking stability.
+  int ExpectedRunningDifference = 0;     /* Stable value that we've obtained from
+                                            check at initial start-up.	*/
+  unsigned StabilityCount;               /* Used to check stability of difference while starting */
+#define RUN_BEFORE_STABILITY_CHECK (30)  // Must run this many seconds before even checking stability.
 #define MINIMUM_STABILITY_COUNT \
   (10)  // Number of consecutive differences that need to be within initial
         // stability band to say we are stable.
@@ -441,7 +436,7 @@ int main(int argc,   /* command line options */
   int OffsetHalf = 0;
 
   unsigned int TimeQuality = 0; /* Time quality for IEEE 1344 indication. */
-  char ParityString[200]; /* Partial output string, to calculate parity on. */
+  char ParityString[200];       /* Partial output string, to calculate parity on. */
   int ParitySum = 0;
   int ParityValue;
   char *StringPointer;
@@ -485,8 +480,7 @@ int main(int argc,   /* command line options */
   int DstSwitchFlag = FALSE;
 
   /* To allow predict for DstPendingFlag in IEEE 1344 */
-  int DstSwitchPendingYear =
-      0; /* Default value isn't valid, but I don't care. */
+  int DstSwitchPendingYear = 0; /* Default value isn't valid, but I don't care. */
   int DstSwitchPendingDayOfYear = 0;
   int DstSwitchPendingHour = 0;
   int DstSwitchPendingMinute = 0;
@@ -512,11 +506,9 @@ int main(int argc,   /* command line options */
   int CountOfSecondsSent = 0; /* Counter of seconds */
 
   /* Flags to indicate whether to add or remove a cycle for time adjustment. */
-  int AddCycle =
-      FALSE;  // We are ahead, add cycle to slow down and get back in sync.
-  int RemoveCycle =
-      FALSE;  // We are behind, remove cycle to slow down and get back in sync.
-  int RateCorrection;  // Aggregate flag for passing to subroutines.
+  int AddCycle = FALSE;     // We are ahead, add cycle to slow down and get back in sync.
+  int RemoveCycle = FALSE;  // We are behind, remove cycle to slow down and get back in sync.
+  int RateCorrection;       // Aggregate flag for passing to subroutines.
   int EnableRateCorrection = TRUE;
 
   float RatioError;
@@ -535,8 +527,7 @@ int main(int argc,   /* command line options */
   Year = 0;
   SetSampleRate = SECOND;
 
-  while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) !=
-         -1) {
+  while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
     switch (temp) {
       case 'a': /* specify audio device (/dev/audio) */
         strlcpy(device, optarg, sizeof(device));
@@ -544,8 +535,7 @@ int main(int argc,   /* command line options */
 
       case 'b': /* Remove (delete) a leap second at the end of the specified
                    minute. */
-        sscanf(optarg, "%2d%2d%2d%2d%2d", &LeapYear, &LeapMonth,
-               &LeapDayOfMonth, &LeapHour, &LeapMinute);
+        sscanf(optarg, "%2d%2d%2d%2d%2d", &LeapYear, &LeapMonth, &LeapDayOfMonth, &LeapHour, &LeapMinute);
         InsertLeapSecond = FALSE;
         DeleteLeapSecond = TRUE;
         break;
@@ -566,8 +556,8 @@ int main(int argc,   /* command line options */
         break;
 
       case 'g': /* Date and time to switch back into / out of DST active. */
-        sscanf(optarg, "%2d%2d%2d%2d%2d", &DstSwitchYear, &DstSwitchMonth,
-               &DstSwitchDayOfMonth, &DstSwitchHour, &DstSwitchMinute);
+        sscanf(optarg, "%2d%2d%2d%2d%2d", &DstSwitchYear, &DstSwitchMonth, &DstSwitchDayOfMonth, &DstSwitchHour,
+               &DstSwitchMinute);
         DstSwitchFlag = TRUE;
         break;
 
@@ -580,8 +570,7 @@ int main(int argc,   /* command line options */
 
       case 'i': /* Insert (add) a leap second at the end of the specified
                    minute. */
-        sscanf(optarg, "%2d%2d%2d%2d%2d", &LeapYear, &LeapMonth,
-               &LeapDayOfMonth, &LeapHour, &LeapMinute);
+        sscanf(optarg, "%2d%2d%2d%2d%2d", &LeapYear, &LeapMonth, &LeapDayOfMonth, &LeapHour, &LeapMinute);
         InsertLeapSecond = TRUE;
         DeleteLeapSecond = FALSE;
         break;
@@ -597,15 +586,13 @@ int main(int argc,   /* command line options */
           RemoveCycle = TRUE;
           AddCycle = FALSE;
 
-          if (Verbose)
-            printf("\n> Forcing rate correction removal of cycle...\n");
+          if (Verbose) printf("\n> Forcing rate correction removal of cycle...\n");
         } else {
           if (RateCorrection > 0) {
             RemoveCycle = FALSE;
             AddCycle = TRUE;
 
-            if (Verbose)
-              printf("\n> Forcing rate correction addition of cycle...\n");
+            if (Verbose) printf("\n> Forcing rate correction addition of cycle...\n");
           }
         }
         break;
@@ -681,8 +668,7 @@ int main(int argc,   /* command line options */
         break;
 
       case 'y': /* Set initial date and time */
-        sscanf(optarg, "%2d%2d%2d%2d%2d%2d", &Year, &Month, &DayOfMonth, &Hour,
-               &Minute, &Second);
+        sscanf(optarg, "%2d%2d%2d%2d%2d%2d", &Year, &Month, &DayOfMonth, &Hour, &Minute, &Second);
         utc++;
         break;
 
@@ -700,22 +686,19 @@ int main(int argc,   /* command line options */
   if (Debug) Verbose = TRUE;
 
   if (InsertLeapSecond || DeleteLeapSecond) {
-    LeapDayOfYear =
-        ConvertMonthDayToDayOfYear(LeapYear, LeapMonth, LeapDayOfMonth);
+    LeapDayOfYear = ConvertMonthDayToDayOfYear(LeapYear, LeapMonth, LeapDayOfMonth);
 
     if (Debug) {
       printf(
           "\nHave request for leap second %s at year %4d day %3d at "
           "%2.2dh%2.2d....\n",
-          DeleteLeapSecond ? "DELETION"
-                           : (InsertLeapSecond ? "ADDITION" : "( error ! )"),
-          LeapYear, LeapDayOfYear, LeapHour, LeapMinute);
+          DeleteLeapSecond ? "DELETION" : (InsertLeapSecond ? "ADDITION" : "( error ! )"), LeapYear, LeapDayOfYear,
+          LeapHour, LeapMinute);
     }
   }
 
   if (DstSwitchFlag) {
-    DstSwitchDayOfYear = ConvertMonthDayToDayOfYear(
-        DstSwitchYear, DstSwitchMonth, DstSwitchDayOfMonth);
+    DstSwitchDayOfYear = ConvertMonthDayToDayOfYear(DstSwitchYear, DstSwitchMonth, DstSwitchDayOfMonth);
 
     /* Figure out time of minute previous to DST switch, so can put up warning
      * flag in IEEE 1344 */
@@ -736,11 +719,10 @@ int main(int argc,   /* command line options */
     }
 
     if (Debug) {
-      printf("\nHave DST switch request for year %4d day %3d at %2.2dh%2.2d,",
-             DstSwitchYear, DstSwitchDayOfYear, DstSwitchHour, DstSwitchMinute);
-      printf("\n    so will have warning at year %4d day %3d at %2.2dh%2.2d.\n",
-             DstSwitchPendingYear, DstSwitchPendingDayOfYear,
-             DstSwitchPendingHour, DstSwitchPendingMinute);
+      printf("\nHave DST switch request for year %4d day %3d at %2.2dh%2.2d,", DstSwitchYear, DstSwitchDayOfYear,
+             DstSwitchHour, DstSwitchMinute);
+      printf("\n    so will have warning at year %4d day %3d at %2.2dh%2.2d.\n", DstSwitchPendingYear,
+             DstSwitchPendingDayOfYear, DstSwitchPendingHour, DstSwitchPendingMinute);
     }
   }
 
@@ -811,8 +793,7 @@ int main(int argc,   /* command line options */
    */
   fd = open(device, O_WRONLY);
   if (fd <= 0) {
-    printf("Unable to open audio device \"%s\", aborting: %s\n", device,
-           strerror(errno));
+    printf("Unable to open audio device \"%s\", aborting: %s\n", device, strerror(errno));
     exit(1);
   }
 
@@ -843,8 +824,7 @@ int main(int argc,   /* command line options */
   /* Now set sample rate */
   SampleRate = SetSampleRate;
   if (ioctl(fd, SNDCTL_DSP_SPEED, &SampleRate) == -1) { /* Fatal error */
-    printf("\nUnable to set sample rate to %d, returned %d, aborting...\n\n",
-           SetSampleRate, SampleRate);
+    printf("\nUnable to set sample rate to %d, returned %d, aborting...\n\n", SetSampleRate, SampleRate);
     exit(-1);
   }
 
@@ -871,9 +851,8 @@ int main(int argc,   /* command line options */
   gettimeofday(&TimeValue, NULL);  // Now always read the system time to keep
                                    // "real time" of operation.
   NowRealTime = BaseRealTime = SecondsPartOfTime = TimeValue.tv_sec;
-  SecondsRunningSimulationTime =
-      0;  // Just starting simulation, running zero seconds as of now.
-  StabilityCount = 0;  // No stability yet.
+  SecondsRunningSimulationTime = 0;  // Just starting simulation, running zero seconds as of now.
+  StabilityCount = 0;                // No stability yet.
 
   if (utc) {
     DayOfYear = ConvertMonthDayToDayOfYear(Year, Month, DayOfMonth);
@@ -899,8 +878,7 @@ int main(int argc,   /* command line options */
     delay(SECOND - TimeValue.tv_usec * 8 / 1000);
   }
 
-  StraightBinarySeconds =
-      Second + (Minute * SECONDS_PER_MINUTE) + (Hour * SECONDS_PER_HOUR);
+  StraightBinarySeconds = Second + (Minute * SECONDS_PER_MINUTE) + (Hour * SECONDS_PER_HOUR);
 
   memset(code, 0, sizeof(code));
   switch (encode) {
@@ -914,8 +892,7 @@ int main(int argc,   /* command line options */
           " Year = %02d, Day of year = %03d, Time = %02d:%02d:%02d, Minute "
           "tone = %d Hz, Hour tone = %d Hz.\n",
           Year, DayOfYear, Hour, Minute, Second, tone, HourTone);
-      snprintf(code, sizeof(code), "%01d%03d%02d%02d%01d", Year / 10, DayOfYear,
-               Hour, Minute, Year % 10);
+      snprintf(code, sizeof(code), "%01d%03d%02d%02d%01d", Year / 10, DayOfYear, Hour, Minute, Year % 10);
       if (Verbose) {
         printf(
             "\n Year = %2.2d, Day of year = %3d, Time = %2.2d:%2.2d:%2.2d, "
@@ -946,8 +923,7 @@ int main(int argc,   /* command line options */
       printf(
           " Year = %02d, Day of year = %03d, Time = %02d:%02d:%02d, Straight "
           "binary seconds (SBS) = %05d / 0x%04X.\n",
-          Year, DayOfYear, Hour, Minute, Second, StraightBinarySeconds,
-          StraightBinarySeconds);
+          Year, DayOfYear, Hour, Minute, Second, StraightBinarySeconds, StraightBinarySeconds);
       printf("\n");
       if (Verbose) {
         printf(
@@ -981,32 +957,25 @@ int main(int argc,   /* command line options */
    * Run the signal generator to generate new timecode strings
    * once per minute for WWV/H and once per second for IRIG.
    */
-  for (CountOfSecondsSent = 0;
-       ((SecondsToSend == 0) || (CountOfSecondsSent < SecondsToSend));
-       CountOfSecondsSent++) {
-    if ((encode == IRIG) &&
-        (((Second % 20) == 0) || (CountOfSecondsSent == 0))) {
+  for (CountOfSecondsSent = 0; ((SecondsToSend == 0) || (CountOfSecondsSent < SecondsToSend)); CountOfSecondsSent++) {
+    if ((encode == IRIG) && (((Second % 20) == 0) || (CountOfSecondsSent == 0))) {
       printf("\n");
 
       printf(
           " Year = %02d, Day of year = %03d, Time = %02d:%02d:%02d, Straight "
           "binary seconds (SBS) = %05d / 0x%04X.\n",
-          Year, DayOfYear, Hour, Minute, Second, StraightBinarySeconds,
-          StraightBinarySeconds);
+          Year, DayOfYear, Hour, Minute, Second, StraightBinarySeconds, StraightBinarySeconds);
       if ((EnableRateCorrection) || (RemoveCycle) || (AddCycle)) {
         printf(
             " CountOfSecondsSent = %d, TotalCyclesAdded = %d, "
             "TotalCyclesRemoved = %d\n",
             CountOfSecondsSent, TotalCyclesAdded, TotalCyclesRemoved);
-        if ((CountOfSecondsSent != 0) &&
-            ((TotalCyclesAdded != 0) || (TotalCyclesRemoved != 0))) {
-          RatioError = ((float)(TotalCyclesAdded - TotalCyclesRemoved)) /
-                       (1000.0 * (float)CountOfSecondsSent);
+        if ((CountOfSecondsSent != 0) && ((TotalCyclesAdded != 0) || (TotalCyclesRemoved != 0))) {
+          RatioError = ((float)(TotalCyclesAdded - TotalCyclesRemoved)) / (1000.0 * (float)CountOfSecondsSent);
           printf(
               " Adjusted by %2.1f%%, apparent send frequency is %4.2f Hz not "
               "%d Hz.\n\n",
-              RatioError * 100.0, (1.0 + RatioError) * ((float)SetSampleRate),
-              SetSampleRate);
+              RatioError * 100.0, (1.0 + RatioError) * ((float)SetSampleRate), SetSampleRate);
         }
       } else
         printf("\n");
@@ -1048,8 +1017,7 @@ int main(int argc,   /* command line options */
     if (LeapState == LEAPSTATE_NORMAL) {
       /* If on the second of a leap (second 59 in the specified minute), then
        * add or delete a second */
-      if ((Year == LeapYear) && (DayOfYear == LeapDayOfYear) &&
-          (Hour == LeapHour) && (Minute == LeapMinute)) {
+      if ((Year == LeapYear) && (DayOfYear == LeapDayOfYear) && (Hour == LeapHour) && (Minute == LeapMinute)) {
         /* To delete a second, which means we go from 58->60 instead of
          * 58->59->00. */
         if ((DeleteLeapSecond) && (Second == 58)) {
@@ -1091,13 +1059,11 @@ int main(int argc,   /* command line options */
         Second = 0;
         LeapState = LEAPSTATE_NORMAL;
 
-        if (Debug)
-          printf("\n<--- Inserted a leap second, now back to zero...\n");
+        if (Debug) printf("\n<--- Inserted a leap second, now back to zero...\n");
         break;
 
       default:
-        printf("\n\nLeap second state invalid value of %d, aborting...",
-               LeapState);
+        printf("\n\nLeap second state invalid value of %d, aborting...", LeapState);
         exit(-1);
         break;
     }
@@ -1122,11 +1088,10 @@ int main(int argc,   /* command line options */
       if (DstSwitchFlag) {
         /* The actual switch happens on the zero'th second of the actual minute
          * specified. */
-        if ((Year == DstSwitchYear) && (DayOfYear == DstSwitchDayOfYear) &&
-            (Hour == DstSwitchHour) && (Minute == DstSwitchMinute)) {
-          if (DstFlag ==
-              0) { /* DST flag is zero, not in DST, going to DST, "spring
-                      ahead", so increment hour by two instead of one. */
+        if ((Year == DstSwitchYear) && (DayOfYear == DstSwitchDayOfYear) && (Hour == DstSwitchHour) &&
+            (Minute == DstSwitchMinute)) {
+          if (DstFlag == 0) { /* DST flag is zero, not in DST, going to DST, "spring
+                                 ahead", so increment hour by two instead of one. */
             Hour++;
             DstFlag = 1;
 
@@ -1173,8 +1138,7 @@ int main(int argc,   /* command line options */
                 OffsetOnes++;
             }
 
-            if (Debug)
-              printf("\n<--- DST de-activated, fall back an hour!...\n");
+            if (Debug) printf("\n<--- DST de-activated, fall back an hour!...\n");
           }
 
           DstSwitchFlag = FALSE; /* One time deal, not intended to run this
@@ -1202,8 +1166,7 @@ int main(int argc,   /* command line options */
         Year++;
       }
       if (encode == WWV) {
-        snprintf(code, sizeof(code), "%01d%03d%02d%02d%01d", Year / 10,
-                 DayOfYear, Hour, Minute, Year % 10);
+        snprintf(code, sizeof(code), "%01d%03d%02d%02d%01d", Year / 10, DayOfYear, Hour, Minute, Year % 10);
         if (Verbose)
           printf(
               "\n Year = %2.2d, Day of year = %3d, Time = %2.2d:%2.2d:%2.2d, "
@@ -1215,15 +1178,12 @@ int main(int argc,   /* command line options */
               ", CountOfSecondsSent = %d, TotalCyclesAdded = %d, "
               "TotalCyclesRemoved = %d\n",
               CountOfSecondsSent, TotalCyclesAdded, TotalCyclesRemoved);
-          if ((CountOfSecondsSent != 0) &&
-              ((TotalCyclesAdded != 0) || (TotalCyclesRemoved != 0))) {
-            RatioError = ((float)(TotalCyclesAdded - TotalCyclesRemoved)) /
-                         (1000.0 * (float)CountOfSecondsSent);
+          if ((CountOfSecondsSent != 0) && ((TotalCyclesAdded != 0) || (TotalCyclesRemoved != 0))) {
+            RatioError = ((float)(TotalCyclesAdded - TotalCyclesRemoved)) / (1000.0 * (float)CountOfSecondsSent);
             printf(
                 " Adjusted by %2.1f%%, apparent send frequency is %4.2f Hz not "
                 "%d Hz.\n\n",
-                RatioError * 100.0, (1.0 + RatioError) * ((float)SetSampleRate),
-                SetSampleRate);
+                RatioError * 100.0, (1.0 + RatioError) * ((float)SetSampleRate), SetSampleRate);
           }
         } else
           printf("\n");
@@ -1235,8 +1195,7 @@ int main(int argc,   /* command line options */
     /* After all that, if we are in the minute just prior to a leap second, warn
      * of leap second pending */
     /* and of the polarity */
-    if ((Year == LeapYear) && (DayOfYear == LeapDayOfYear) &&
-        (Hour == LeapHour) && (Minute == LeapMinute)) {
+    if ((Year == LeapYear) && (DayOfYear == LeapDayOfYear) && (Hour == LeapHour) && (Minute == LeapMinute)) {
       LeapSecondPending = TRUE;
       LeapSecondPolarity = DeleteLeapSecond;
     } else {
@@ -1247,28 +1206,23 @@ int main(int argc,   /* command line options */
     /* Notification through IEEE 1344 happens during the whole minute previous
      * to the minute specified. */
     /* The time of that minute has been previously calculated. */
-    if ((Year == DstSwitchPendingYear) &&
-        (DayOfYear == DstSwitchPendingDayOfYear) &&
-        (Hour == DstSwitchPendingHour) && (Minute == DstSwitchPendingMinute)) {
+    if ((Year == DstSwitchPendingYear) && (DayOfYear == DstSwitchPendingDayOfYear) && (Hour == DstSwitchPendingHour) &&
+        (Minute == DstSwitchPendingMinute)) {
       DstPendingFlag = TRUE;
     } else {
       DstPendingFlag = FALSE;
     }
 
-    StraightBinarySeconds =
-        Second + (Minute * SECONDS_PER_MINUTE) + (Hour * SECONDS_PER_HOUR);
+    StraightBinarySeconds = Second + (Minute * SECONDS_PER_MINUTE) + (Hour * SECONDS_PER_HOUR);
 
     if (encode == IRIG) {
       if (IrigIncludeIeee) {
         if ((OffsetOnes == 0) && (OffsetHalf == 0)) OffsetSignBit = 0;
 
         ControlFunctions = (LeapSecondPending == 0 ? 0x00000 : 0x00001) |
-                           (LeapSecondPolarity == 0 ? 0x00000 : 0x00002) |
-                           (DstPendingFlag == 0 ? 0x00000 : 0x00004) |
-                           (DstFlag == 0 ? 0x00000 : 0x00008) |
-                           (OffsetSignBit == 0 ? 0x00000 : 0x00010) |
-                           ((OffsetOnes & 0x0F) << 5) |
-                           (OffsetHalf == 0 ? 0x00000 : 0x00200) |
+                           (LeapSecondPolarity == 0 ? 0x00000 : 0x00002) | (DstPendingFlag == 0 ? 0x00000 : 0x00004) |
+                           (DstFlag == 0 ? 0x00000 : 0x00008) | (OffsetSignBit == 0 ? 0x00000 : 0x00010) |
+                           ((OffsetOnes & 0x0F) << 5) | (OffsetHalf == 0 ? 0x00000 : 0x00200) |
                            ((TimeQuality & 0x0F) << 10);
         /* if  (Verbose)
                 printf ("\nDstFlag = %d, OffsetSignBit = %d, OffsetOnes = %d,
@@ -1285,18 +1239,16 @@ int main(int argc,   /* command line options */
               0, Year, DayOfYear, Hour, Minute, Second);
       */
       if (IrigIncludeYear) {
-        snprintf(ParityString, sizeof(ParityString), "%04X%02d%04d%02d%02d%02d",
-                 ControlFunctions & 0x7FFF, Year, DayOfYear, Hour, Minute,
-                 Second);
+        snprintf(ParityString, sizeof(ParityString), "%04X%02d%04d%02d%02d%02d", ControlFunctions & 0x7FFF, Year,
+                 DayOfYear, Hour, Minute, Second);
       } else {
-        snprintf(ParityString, sizeof(ParityString), "%04X%02d%04d%02d%02d%02d",
-                 ControlFunctions & 0x7FFF, 0, DayOfYear, Hour, Minute, Second);
+        snprintf(ParityString, sizeof(ParityString), "%04X%02d%04d%02d%02d%02d", ControlFunctions & 0x7FFF, 0,
+                 DayOfYear, Hour, Minute, Second);
       }
 
       if (IrigIncludeIeee) {
         ParitySum = 0;
-        for (StringPointer = ParityString; *StringPointer != NUL;
-             StringPointer++) {
+        for (StringPointer = ParityString; *StringPointer != NUL; StringPointer++) {
           switch (toupper(*StringPointer)) {
             case '1':
             case '2':
@@ -1339,13 +1291,13 @@ int main(int argc,   /* command line options */
       if (IrigIncludeYear) {
         snprintf(code, sizeof(code),
                  /* YearDay HourMin Sec */
-                 "%05X%05X%02d%04d%02d%02d%02d", StraightBinarySeconds,
-                 ControlFunctions, Year, DayOfYear, Hour, Minute, Second);
+                 "%05X%05X%02d%04d%02d%02d%02d", StraightBinarySeconds, ControlFunctions, Year, DayOfYear, Hour, Minute,
+                 Second);
       } else {
         snprintf(code, sizeof(code),
                  /* YearDay HourMin Sec */
-                 "%05X%05X%02d%04d%02d%02d%02d", StraightBinarySeconds,
-                 ControlFunctions, 0, DayOfYear, Hour, Minute, Second);
+                 "%05X%05X%02d%04d%02d%02d%02d", StraightBinarySeconds, ControlFunctions, 0, DayOfYear, Hour, Minute,
+                 Second);
       }
 
       if (Debug)
@@ -1430,8 +1382,7 @@ int main(int argc,   /* command line options */
               /* FALLTHRU */
             case COEF: /* send BCD bit */
               AsciiValue = toupper(code[ptr]);
-              HexValue = isdigit(AsciiValue) ? AsciiValue - '0'
-                                             : (AsciiValue - 'A') + 10;
+              HexValue = isdigit(AsciiValue) ? AsciiValue - '0' : (AsciiValue - 'A') + 10;
               /* if  (Debug) {
                       if  (ptr != OldPtr) {
                       if  (Verbose)
@@ -1470,10 +1421,9 @@ int main(int argc,   /* command line options */
                     }
                     strlcat(OutputDataString, "o", OUTPUT_DATA_STRING_LENGTH);
                   }
-                }       // End of true clause for "if  (RateCorrection < 0)"
-                else {  // Else clause for "if  (RateCorrection < 0)"
-                  if (RateCorrection >
-                      0) {  // Need to add cycles to slow back down.
+                }                            // End of true clause for "if  (RateCorrection < 0)"
+                else {                       // Else clause for "if  (RateCorrection < 0)"
+                  if (RateCorrection > 0) {  // Need to add cycles to slow back down.
                     if ((HexValue & arg) != 0) {
                       if (Unmodulated) {
                         poop(M5, 1000, HIGH, UnmodulatedInverted);
@@ -1569,8 +1519,8 @@ int main(int argc,   /* command line options */
               /* FALLTHRU */
             case NODEC: /* send marker/position indicator IM/PI bit but no
                            decrement pointer */
-            case MIN: /* send "second start" marker/position indicator IM/PI bit
-                       */
+            case MIN:   /* send "second start" marker/position indicator IM/PI bit
+                         */
               if (Unmodulated) {
                 poop(arg, 1000, HIGH, UnmodulatedInverted);
                 poop(10 - arg, 1000, LOW, UnmodulatedInverted);
@@ -1796,16 +1746,14 @@ int main(int argc,   /* command line options */
                                         // backwards, do not blow up.
       {
         SecondsRunningRealTime = (unsigned)(NowRealTime - BaseRealTime);
-        SecondsRunningDifference =
-            SecondsRunningSimulationTime - SecondsRunningRealTime;
+        SecondsRunningDifference = SecondsRunningSimulationTime - SecondsRunningRealTime;
 
         if (Debug) {
           printf(
               "> NowRealTime = 0x%8.8X, BaseRealtime = 0x%8.8X, "
               "SecondsRunningRealTime = 0x%8.8X, SecondsRunningSimulationTime "
               "= 0x%8.8X.\n",
-              (unsigned)NowRealTime, (unsigned)BaseRealTime,
-              SecondsRunningRealTime, SecondsRunningSimulationTime);
+              (unsigned)NowRealTime, (unsigned)BaseRealTime, SecondsRunningRealTime, SecondsRunningSimulationTime);
           printf(
               "> SecondsRunningDifference = 0x%8.8X, ExpectedRunningDifference "
               "= 0x%8.8X.\n",
@@ -1819,8 +1767,7 @@ int main(int argc,   /* command line options */
               StabilityCount++;
               if (Debug) printf("> Starting stability check.\n");
             } else {  // Else for "if  (StabilityCount == 0)"
-              if ((ExpectedRunningDifference + INITIAL_STABILITY_BAND >
-                   SecondsRunningDifference) &&
+              if ((ExpectedRunningDifference + INITIAL_STABILITY_BAND > SecondsRunningDifference) &&
                   (ExpectedRunningDifference - INITIAL_STABILITY_BAND <
                    SecondsRunningDifference)) {  // So far, still within
                                                  // stability band, increment
@@ -1863,8 +1810,7 @@ int main(int argc,   /* command line options */
                   if (Debug) printf("> Was removing cycles, not done yet.\n");
                 }
               } else {
-                if ((ExpectedRunningDifference + RUNNING_STABILITY_BAND >
-                     SecondsRunningDifference) &&
+                if ((ExpectedRunningDifference + RUNNING_STABILITY_BAND > SecondsRunningDifference) &&
                     (ExpectedRunningDifference - RUNNING_STABILITY_BAND <
                      SecondsRunningDifference)) {  // All is well, within
                                                    // tolerances.
@@ -1909,9 +1855,9 @@ int main(int argc,   /* command line options */
             }        // End of else clause of "if  (AddCycle)".
           }          // End of else clause for "if  (StabilityCount <
                      // MINIMUM_STABILITY_COUNT))"
-        }  // End of true clause for "if  ((SecondsRunningSimulationTime >
-           // RUN_BEFORE_STABILITY_CHECK)"
-      }    // End of true clause for "if  (NowRealTime >= BaseRealTime)"
+        }            // End of true clause for "if  ((SecondsRunningSimulationTime >
+                     // RUN_BEFORE_STABILITY_CHECK)"
+      }              // End of true clause for "if  (NowRealTime >= BaseRealTime)"
       else {
         if (Debug) printf("> Hmm, time going backwards?\n");
       }
@@ -2102,8 +2048,7 @@ void delay(int Delay /* delay in samples */
 /* Year - 0 means 2000, 100 means 2100. */
 /* Month - 1 means January, 12 means December. */
 /* DayOfMonth - 1 is first day of month */
-int ConvertMonthDayToDayOfYear(int YearValue, int MonthValue,
-                               int DayOfMonthValue) {
+int ConvertMonthDayToDayOfYear(int YearValue, int MonthValue, int DayOfMonthValue) {
   int ReturnValue;
   int LeapYear;
   int MonthCounter;
@@ -2124,8 +2069,7 @@ int ConvertMonthDayToDayOfYear(int YearValue, int MonthValue,
   }
 
   if (Debug)
-    printf("\nConvertMonthDayToDayOfYear(): Year %d %s a leap year.\n",
-           YearValue + 2000, LeapYear ? "is" : "is not");
+    printf("\nConvertMonthDayToDayOfYear(): Year %d %s a leap year.\n", YearValue + 2000, LeapYear ? "is" : "is not");
 
   /* Day of month given us starts in this algorithm. */
   ReturnValue = DayOfMonthValue;
@@ -2150,8 +2094,7 @@ int ConvertMonthDayToDayOfYear(int YearValue, int MonthValue,
 }
 
 void Help(void) {
-  printf("\n\nTime Code Generation - IRIG-B or WWV, v%d.%d, %s dmw", VERSION,
-         ISSUE, ISSUE_DATE);
+  printf("\n\nTime Code Generation - IRIG-B or WWV, v%d.%d, %s dmw", VERSION, ISSUE, ISSUE_DATE);
   printf("\n\nRCS Info:");
   printf(
       "\n  $Header: /home/dmw/src/IRIG_generation/ntp-4.2.2p3/util/RCS/tg.c,v "
@@ -2242,8 +2185,7 @@ void ReverseString(char *str) {
 
   StringLength = strlen(str);
   CentreOfString = (StringLength / 2) + 1;
-  for (IndexCounter = StringLength; IndexCounter >= CentreOfString;
-       IndexCounter--) {
+  for (IndexCounter = StringLength; IndexCounter >= CentreOfString; IndexCounter--) {
     TemporaryCharacter = str[IndexCounter - 1];
     str[IndexCounter - 1] = str[StringLength - IndexCounter];
     str[StringLength - IndexCounter] = TemporaryCharacter;

@@ -4,5 +4,5 @@ LDLIBS=-lm -lbsd
 tg2: tg2.c
 
 style:
-	clang-format --style=Google -i tg2.c
+	clang-format --style="{BasedOnStyle: Google, ColumnLimit: 120}" -i tg2.c
 .PHONY: style
