@@ -51,11 +51,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
+#include <portaudio.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <sys/soundcard.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -69,20 +70,19 @@
 #define ISSUE (23)
 #define ISSUE_DATE "2007-02-12"
 
-#define SECOND (8000)     /* one second of 125-us samples */
-#define BUFLNG (400)      /* buffer size */
-#define DEVICE "/dev/dsp" /* default audio device */
-#define WWV (0)           /* WWV encoder */
-#define IRIG (1)          /* IRIG-B encoder */
-#define OFF (0)           /* zero amplitude */
-#define LOW (1)           /* low amplitude */
-#define HIGH (2)          /* high amplitude */
-#define DATA0 (200)       /* WWV/H 0 pulse */
-#define DATA1 (500)       /* WWV/H 1 pulse */
-#define PI (800)          /* WWV/H PI pulse */
-#define M2 (2)            /* IRIG 0 pulse */
-#define M5 (5)            /* IRIG 1 pulse */
-#define M8 (8)            /* IRIG PI pulse */
+#define SECOND (8000) /* one second of 125-us samples */
+#define BUFLNG (400)  /* buffer size */
+#define WWV (0)       /* WWV encoder */
+#define IRIG (1)      /* IRIG-B encoder */
+#define OFF (0)       /* zero amplitude */
+#define LOW (1)       /* low amplitude */
+#define HIGH (2)      /* high amplitude */
+#define DATA0 (200)   /* WWV/H 0 pulse */
+#define DATA1 (500)   /* WWV/H 1 pulse */
+#define PI (800)      /* WWV/H PI pulse */
+#define M2 (2)        /* IRIG 0 pulse */
+#define M5 (5)        /* IRIG 1 pulse */
+#define M8 (8)        /* IRIG PI pulse */
 
 #define NUL (0)
 
@@ -344,7 +344,6 @@ void ReverseString(char *);
  */
 char buffer[BUFLNG];         /* output buffer */
 int bufcnt = 0;              /* buffer counter */
-int fd;                      /* audio codec file descriptor */
 int tone = 1000;             /* WWV sync frequency */
 int HourTone = 1500;         /* WWV hour on-time frequency */
 int encode = IRIG;           /* encoder select */
@@ -361,17 +360,26 @@ int ControlFunctions = 0;
 int Debug = FALSE;
 int Verbose = TRUE;
 char *CommandName;
+PaStream *stream = NULL;
 
 int TotalSecondsCorrected = 0;
 int TotalCyclesAdded = 0;
 int TotalCyclesRemoved = 0;
 
+void Die(const char *fmt, ...) {
+  va_list vargs;
+  va_start(vargs, fmt);
+  vfprintf(stderr, fmt, vargs);
+  va_end(vargs);
+  fprintf(stderr, "\n");
+  Pa_Terminate();
+  exit(1);
+}
+
 /*
  * Main program
  */
-int main(int argc,   /* command line options */
-         char **argv /* poiniter to list of tokens */
-) {
+int main(int argc, char **argv) {
   struct timeval TimeValue;              /* System clock at startup */
   time_t SecondsPartOfTime;              /* Sent to gmtime() for calculation of TimeStructure
                                             (can apply offset). */
@@ -400,7 +408,6 @@ int main(int argc,   /* command line options */
        // value.
 
   struct tm *TimeStructure = NULL; /* Structure returned by gmtime */
-  char device[200];                /* audio device */
   char code[200];                  /* timecode */
   int temp;
   int arg = 0;
@@ -416,12 +423,6 @@ int main(int argc,   /* command line options */
   int DayOfYear;
 
   int BitNumber;
-  int AudioFormat;
-  int MonoStereo; /* 0=mono, 1=stereo */
-#define MONO (0)
-#define STEREO (1)
-  int SampleRate;
-  int SampleRateDifference;
   int SetSampleRate;
   char FormatCharacter = '3'; /* Default is IRIG-B with IEEE 1344 extensions */
   char AsciiValue;
@@ -523,16 +524,11 @@ int main(int argc,   /* command line options */
   /*
    * Parse options
    */
-  strlcpy(device, DEVICE, sizeof(device));
   Year = 0;
   SetSampleRate = SECOND;
 
-  while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
+  while ((temp = getopt(argc, argv, "b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
     switch (temp) {
-      case 'a': /* specify audio device (/dev/audio) */
-        strlcpy(device, optarg, sizeof(device));
-        break;
-
       case 'b': /* Remove (delete) a leap second at the end of the specified
                    minute. */
         sscanf(optarg, "%2d%2d%2d%2d%2d", &LeapYear, &LeapMonth, &LeapDayOfMonth, &LeapHour, &LeapMinute);
@@ -791,58 +787,25 @@ int main(int argc,   /* command line options */
   /*
    * Open audio device and set options
    */
-  fd = open(device, O_WRONLY);
-  if (fd <= 0) {
-    printf("Unable to open audio device \"%s\", aborting: %s\n", device, strerror(errno));
-    exit(1);
-  }
 
-  /* First set coding type */
-  AudioFormat = AFMT_MU_LAW;
-  if (ioctl(fd, SNDCTL_DSP_SETFMT, &AudioFormat) == -1) { /* Fatal error */
-    printf("\nUnable to set output format, aborting...\n\n");
-    exit(-1);
-  }
+  PaError err;
+  err = Pa_Initialize();
+  if (err != paNoError) Die("Pa_Initialize failed");
 
-  if (AudioFormat != AFMT_MU_LAW) {
-    printf("\nUnable to set output format for mu law, aborting...\n\n");
-    exit(-1);
-  }
+  PaStreamParameters outputParameters;
+  outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
+  if (outputParameters.device == paNoDevice) Die("No default output device");
+  outputParameters.channelCount = 1;
+  outputParameters.sampleFormat = paUInt8;
+  outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
+  outputParameters.hostApiSpecificStreamInfo = NULL;
 
-  /* Next set number of channels */
-  MonoStereo = MONO;                                     /* Mono */
-  if (ioctl(fd, SNDCTL_DSP_STEREO, &MonoStereo) == -1) { /* Fatal error */
-    printf("\nUnable to set mono/stereo, aborting...\n\n");
-    exit(-1);
-  }
-
-  if (MonoStereo != MONO) {
-    printf("\nUnable to set mono/stereo for mono, aborting...\n\n");
-    exit(-1);
-  }
-
-  /* Now set sample rate */
-  SampleRate = SetSampleRate;
-  if (ioctl(fd, SNDCTL_DSP_SPEED, &SampleRate) == -1) { /* Fatal error */
-    printf("\nUnable to set sample rate to %d, returned %d, aborting...\n\n", SetSampleRate, SampleRate);
-    exit(-1);
-  }
-
-  SampleRateDifference = SampleRate - SetSampleRate;
-
-  if (SampleRateDifference < 0) SampleRateDifference = -SampleRateDifference;
-
-  /* Fixed allowable sample rate error 0.1% */
-  if (SampleRateDifference > (SetSampleRate / 1000)) {
-    printf(
-        "\nUnable to set sample rate to %d, result was %d, more than 0.1 "
-        "percent, aborting...\n\n",
-        SetSampleRate, SampleRate);
-    exit(-1);
-  } else {
-    /* printf ("\nAttempt to set sample rate to %d, actual %d...\n\n",
-     * SetSampleRate, SampleRate); */
-  }
+  err = Pa_OpenStream(&stream, NULL, /* no input */
+                      &outputParameters, SetSampleRate, BUFLNG,
+                      paClipOff, /* we won't output out of range samples so don't bother clipping them */
+                      NULL,      /* no callback, use blocking API */
+                      NULL);     /* no callback, so no callback userData */
+  if (err != paNoError) Die("Pa_OpenStream failed");
 
   /*
    * Unless specified otherwise, read the system clock and
@@ -952,6 +915,9 @@ int main(int argc,   /* command line options */
       }
       break;
   }
+
+  err = Pa_StartStream(stream);
+  if (err != paNoError) Die("Pa_StartStream failed");
 
   /*
    * Run the signal generator to generate new timecode strings
@@ -1978,7 +1944,7 @@ void peep(int pulse, /* pulse length (ms) */
         buffer[bufcnt++] = ~0;
     }
     if (bufcnt >= BUFLNG) {
-      write(fd, buffer, BUFLNG);
+      Pa_WriteStream(stream, buffer, BUFLNG);
       bufcnt = 0;
     }
     j = (j + increm) % 80;
@@ -2021,7 +1987,7 @@ void poop(int pulse,   /* pulse length (ms) */
         buffer[bufcnt++] = ~0;
     }
     if (bufcnt >= BUFLNG) {
-      write(fd, buffer, BUFLNG);
+      Pa_WriteStream(stream, buffer, BUFLNG);
       bufcnt = 0;
     }
     j = (j + increm) % 80;
@@ -2038,10 +2004,10 @@ void delay(int Delay /* delay in samples */
   samples = Delay;
   memset(buffer, 0, BUFLNG);
   while (samples >= BUFLNG) {
-    write(fd, buffer, BUFLNG);
+    Pa_WriteStream(stream, buffer, BUFLNG);
     samples -= BUFLNG;
   }
-  write(fd, buffer, samples);
+  Pa_WriteStream(stream, buffer, BUFLNG);
 }
 
 /* Calc day of year from year month & day */
@@ -2100,9 +2066,6 @@ void Help(void) {
       "\n  $Header: /home/dmw/src/IRIG_generation/ntp-4.2.2p3/util/RCS/tg.c,v "
       "1.28 2007/02/12 23:57:45 dmw Exp $");
   printf("\n\nUsage: %s [option]*", CommandName);
-  printf(
-      "\n\nOptions: -a device_name                 Output audio device name "
-      "(default /dev/audio)");
   printf(
       "\n         -b yymmddhhmm                  Remove leap second at end of "
       "minute specified");
