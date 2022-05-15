@@ -423,7 +423,7 @@ int main(int argc, char **argv) {
   int DayOfYear;
 
   int BitNumber;
-  int SetSampleRate;
+  double SetSampleRate;
   char FormatCharacter = '3'; /* Default is IRIG-B with IEEE 1344 extensions */
   char AsciiValue;
   int HexValue;
@@ -645,7 +645,7 @@ int main(int argc, char **argv) {
         break;
 
       case 'r': /* sample rate (nominally 8000, integer close to 8000 I hope) */
-        sscanf(optarg, "%d", &SetSampleRate);
+        sscanf(optarg, "%lf", &SetSampleRate);
         break;
 
       case 's': /* set leap warning bit (WWV/H only) */
@@ -810,13 +810,20 @@ int main(int argc, char **argv) {
     if (deviceNum == paNoDevice) Die("No default output device");
   }
 
+  const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(deviceNum);
+  printf("using device %s\n", deviceInfo->name);
+  printf("default sample rate=%f\n", deviceInfo->defaultSampleRate);
+
+
   PaStreamParameters outputParameters;
   memset(&outputParameters, 0, sizeof outputParameters);
   outputParameters.device = deviceNum;
   outputParameters.channelCount = 1;
   outputParameters.sampleFormat = paUInt8;
   outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
-  outputParameters.hostApiSpecificStreamInfo = NULL;
+
+  err = Pa_IsFormatSupported(NULL, &outputParameters, SetSampleRate);
+  if (err != paFormatIsSupported) Die("Audio output format is not supported.");
 
   err = Pa_OpenStream(&stream, NULL, /* no input */
                       &outputParameters, SetSampleRate, BUFLNG,
@@ -824,6 +831,17 @@ int main(int argc, char **argv) {
                       NULL,      /* no callback, use blocking API */
                       NULL);     /* no callback, so no callback userData */
   if (err != paNoError) Die("Pa_OpenStream failed");
+
+  const PaStreamInfo *info = Pa_GetStreamInfo(stream);
+  if (info == NULL) Die("failed to get stream info");
+  printf("sample rate=%f\n", info->sampleRate);
+
+  double SampleRateDifference = fabs(info->sampleRate - SetSampleRate);
+  /* Fixed allowable sample rate error 0.1% */
+  if (SampleRateDifference > (SetSampleRate/1000))
+    Die("Unable to set sample rate to %f, result was %f, more than 0.1 percent, aborting...\n\n",
+	SetSampleRate, info->sampleRate);
+  
 
   /*
    * Unless specified otherwise, read the system clock and
@@ -958,8 +976,8 @@ int main(int argc, char **argv) {
           RatioError = ((float)(TotalCyclesAdded - TotalCyclesRemoved)) / (1000.0 * (float)CountOfSecondsSent);
           printf(
               " Adjusted by %2.1f%%, apparent send frequency is %4.2f Hz not "
-              "%d Hz.\n\n",
-              RatioError * 100.0, (1.0 + RatioError) * ((float)SetSampleRate), SetSampleRate);
+              "%.3f Hz.\n\n",
+              RatioError * 100.0, (1.0 + RatioError) * SetSampleRate, SetSampleRate);
         }
       } else
         printf("\n");
@@ -1166,8 +1184,8 @@ int main(int argc, char **argv) {
             RatioError = ((float)(TotalCyclesAdded - TotalCyclesRemoved)) / (1000.0 * (float)CountOfSecondsSent);
             printf(
                 " Adjusted by %2.1f%%, apparent send frequency is %4.2f Hz not "
-                "%d Hz.\n\n",
-                RatioError * 100.0, (1.0 + RatioError) * ((float)SetSampleRate), SetSampleRate);
+                "%.3f Hz.\n\n",
+                RatioError * 100.0, (1.0 + RatioError) * SetSampleRate, SetSampleRate);
           }
         } else
           printf("\n");
