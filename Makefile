@@ -1,5 +1,7 @@
-CFLAGS := -Werror -Wall -Wextra -fsanitize=undefined,address -pedantic
+CFLAGS := -Werror -Wall -Wextra -pedantic
 LDFLAGS := -lbsd -lm
+
+CFLAGS += -fsanitize=undefined,address
 
 CFLAGS += $(shell pkg-config --cflags portaudio-2.0)
 LDFLAGS += $(shell pkg-config --libs portaudio-2.0)
