@@ -511,6 +511,7 @@ int main(int argc, char **argv) {
   int RemoveCycle = FALSE;  // We are behind, remove cycle to slow down and get back in sync.
   int RateCorrection;       // Aggregate flag for passing to subroutines.
   int EnableRateCorrection = TRUE;
+  int deviceNum = -1;
 
   float RatioError;
 
@@ -527,8 +528,12 @@ int main(int argc, char **argv) {
   Year = 0;
   SetSampleRate = SECOND;
 
-  while ((temp = getopt(argc, argv, "b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
+  while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
     switch (temp) {
+      case 'a':
+        sscanf(optarg, "%d", &deviceNum);
+        break;
+
       case 'b': /* Remove (delete) a leap second at the end of the specified
                    minute. */
         sscanf(optarg, "%2d%2d%2d%2d%2d", &LeapYear, &LeapMonth, &LeapDayOfMonth, &LeapHour, &LeapMinute);
@@ -792,9 +797,22 @@ int main(int argc, char **argv) {
   err = Pa_Initialize();
   if (err != paNoError) Die("Pa_Initialize failed");
 
+  int numDevices = Pa_GetDeviceCount();
+  if (numDevices < 0) Die("no audio devices");
+
+  for (int i = 0; i < numDevices; i++) {
+    const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(i);
+    printf("%02d: %s\n", i, deviceInfo->name);
+  }
+
+  if (deviceNum < 0) {
+    deviceNum = Pa_GetDefaultOutputDevice();
+    if (deviceNum == paNoDevice) Die("No default output device");
+  }
+
   PaStreamParameters outputParameters;
-  outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
-  if (outputParameters.device == paNoDevice) Die("No default output device");
+  memset(&outputParameters, 0, sizeof outputParameters);
+  outputParameters.device = deviceNum;
   outputParameters.channelCount = 1;
   outputParameters.sampleFormat = paUInt8;
   outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
