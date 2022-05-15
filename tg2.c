@@ -203,33 +203,22 @@
 #include <stdlib.h>
 #include <time.h>
 
-#ifdef  HAVE_CONFIG_H
-#include "config.h"
-#undef VERSION		/* avoid conflict below */
-#endif
-
-#ifdef  HAVE_SYS_SOUNDCARD_H
-#include <sys/soundcard.h>
-#else
-# ifdef HAVE_SYS_AUDIOIO_H
-# include <sys/audioio.h>
-# else
-# include <sys/audio.h>
-# endif
-#endif
-
-#include "ntp_stdlib.h"	/* for strlcat(), strlcpy() */
-
 #include <math.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <bsd/string.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+
+#include <sys/soundcard.h>
+
+#define TRUE 1
+#define FALSE 0
 
 #define VERSION		(0)
 #define	ISSUE		(23)
@@ -237,7 +226,7 @@
 
 #define	SECOND	(8000)			/* one second of 125-us samples */
 #define BUFLNG	(400)			/* buffer size */
-#define	DEVICE	"/dev/audio"	/* default audio device */
+#define	DEVICE	"/dev/dsp"	/* default audio device */
 #define	WWV		(0)				/* WWV encoder */
 #define	IRIG	(1)				/* IRIG-B encoder */
 #define	OFF		(0)				/* zero amplitude */
@@ -527,11 +516,6 @@ int	Debug = FALSE;
 int Verbose = TRUE;
 char	*CommandName;
 
-#ifndef  HAVE_SYS_SOUNDCARD_H
-int	level = AUDIO_MAX_GAIN / 8; /* output level */
-int	port = AUDIO_LINE_OUT;	/* output port */
-#endif
-
 int		TotalSecondsCorrected = 0;
 int		TotalCyclesAdded = 0;
 int		TotalCyclesRemoved = 0;
@@ -546,11 +530,6 @@ main(
 	char	**argv		/* poiniter to list of tokens */
 	)
 {
-#ifndef  HAVE_SYS_SOUNDCARD_H
-	audio_info_t info;	/* Sun audio structure */
-	int	rval;           /* For IOCTL calls */
-#endif
-
 	struct	timeval	 TimeValue;				/* System clock at startup */
 	time_t			 SecondsPartOfTime;		/* Sent to gmtime() for calculation of TimeStructure (can apply offset). */
 	time_t			 BaseRealTime;			/* Base realtime so can determine seconds since starting. */
@@ -584,19 +563,17 @@ main(
 	int	DayOfYear;
 
 	int	BitNumber;
-#ifdef HAVE_SYS_SOUNDCARD_H
 	int	AudioFormat;
 	int	MonoStereo;     /* 0=mono, 1=stereo */
 #define	MONO	(0)
 #define	STEREO	(1)
 	int	SampleRate;
 	int	SampleRateDifference;
-#endif
 	int	SetSampleRate;
 	char FormatCharacter = '3';		/* Default is IRIG-B with IEEE 1344 extensions */
 	char AsciiValue;
 	int	HexValue;
-	int	OldPtr = 0;
+	//int	OldPtr = 0;
 	int FrameNumber = 0;
 
 	/* Time offset for IEEE 1344 indication. */
@@ -605,7 +582,7 @@ main(
 	int OffsetOnes = 0;
 	int OffsetHalf = 0;
 
-	int	TimeQuality = 0;	/* Time quality for IEEE 1344 indication. */
+	unsigned int TimeQuality = 0;	/* Time quality for IEEE 1344 indication. */
 	char ParityString[200];	/* Partial output string, to calculate parity on. */
 	int	ParitySum = 0;
 	int	ParityValue;
@@ -692,11 +669,7 @@ main(
 	Year = 0;
 	SetSampleRate = SECOND;
 	
-#if	HAVE_SYS_SOUNDCARD_H
 	while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
-#else
-	while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:v:xy:z?")) != -1) {
-#endif
 		switch (temp) {
 
 		case 'a':	/* specify audio device (/dev/audio) */
@@ -840,12 +813,6 @@ main(
 				dut1 |= 0x8;
 			break;
 
-#ifndef  HAVE_SYS_SOUNDCARD_H
-		case 'v':	/* set output level (0-255) */
-			sscanf(optarg, "%d", &level);
-			break;
-#endif
-
 		case 'x':	/* Turn off verbose output. */
 			Verbose = FALSE;
 			break;
@@ -977,7 +944,6 @@ main(
 		exit(1);
 	}
 
-#ifdef  HAVE_SYS_SOUNDCARD_H
 	/* First set coding type */
 	AudioFormat = AFMT_MU_LAW;
 	if (ioctl(fd, SNDCTL_DSP_SETFMT, &AudioFormat)==-1)
@@ -1029,24 +995,6 @@ main(
 	{
 	/* printf ("\nAttempt to set sample rate to %d, actual %d...\n\n", SetSampleRate, SampleRate); */
 	}
-#else
-	rval = ioctl(fd, AUDIO_GETINFO, &info);
-	if (rval < 0) {
-		printf("\naudio control %s", strerror(errno));
-		exit(0);
-	}
-	info.play.port = port;
-	info.play.gain = level;
-	info.play.sample_rate = SetSampleRate;
-	info.play.channels = 1;
-	info.play.precision = 8;
-	info.play.encoding = AUDIO_ENCODING_ULAW;
-	printf("\nport %d gain %d rate %d chan %d prec %d encode %d\n",
-	    info.play.port, info.play.gain, info.play.sample_rate,
-	    info.play.channels, info.play.precision,
-	    info.play.encoding);
-	ioctl(fd, AUDIO_SETINFO, &info);
-#endif
 
  	/*
 	 * Unless specified otherwise, read the system clock and
@@ -1523,7 +1471,7 @@ main(
 				printf("\nCode string: %s, ParityString = %s, ParitySum = 0x%2.2X, ParityValue = %d, DstFlag = %d...\n", code, ParityString, ParitySum, ParityValue, DstFlag);
 
 			ptr = strlen(code)-1;
-			OldPtr = 0;
+			//OldPtr = 0;
 		}
 
 		/*
@@ -1595,6 +1543,7 @@ main(
 
 				case DECC:	/* decrement pointer and send bit. */
 					ptr--;
+					/* FALLTHRU */
 				case COEF:	/* send BCD bit */
 					AsciiValue = toupper(code[ptr]);
 					HexValue   = isdigit(AsciiValue) ? AsciiValue - '0' : (AsciiValue - 'A')+10;
@@ -1773,6 +1722,7 @@ main(
 
 				case DEC:	/* send marker/position indicator IM/PI bit */
 					ptr--;
+					/* FALLTHRU */
 				case NODEC:	/* send marker/position indicator IM/PI bit but no decrement pointer */
 				case MIN:	/* send "second start" marker/position indicator IM/PI bit */
 					if  (Unmodulated)
@@ -2474,9 +2424,6 @@ Help ( void )
 	printf (  "\n         -s                             Set leap warning bit (WWV[H] only)");
 	printf (  "\n         -t sync_frequency              WWV(H) on-time pulse tone frequency (default 1200)");
 	printf (  "\n         -u DUT1_offset                 Set WWV(H) DUT1 offset -7 to +7 (default 0)");
-#ifndef  HAVE_SYS_SOUNDCARD_H
-	printf (  "\n         -v initial_output_level        Set initial output level (default %d, must be 0 to 255)", AUDIO_MAX_GAIN/8);
-#endif
 	printf (  "\n         -x                             Turn off verbose output (default on)");
 	printf (  "\n         -y yymmddhhmmss                Set initial date and time as specified (default system time)");
 	printf ("\n\nThis software licenced under the GPL, modifications performed 2006 & 2007 by Dean Weiten");
