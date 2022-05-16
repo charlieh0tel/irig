@@ -1988,12 +1988,6 @@ void Help(void) {
   printf(
       "\n                                        3 = Modulated IRIG-B w/IEEE "
       "1344 (year & control funcs) (default)");
-  printf(
-      "\n                                        4 = Unmodulated IRIG-B w/IEEE "
-      "1344 (year & control funcs)");
-  printf(
-      "\n                                        5 = Inverted unmodulated "
-      "IRIG-B w/IEEE 1344 (year & control funcs)");
   printf("\n                                        w = WWV(H)");
   printf(
       "\n         -g yymmddhhmm                  Switch into/out of DST at "
