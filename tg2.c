@@ -27,18 +27,18 @@
 #define ISSUE (23)
 #define ISSUE_DATE "2007-02-12"
 
-#define BUFLNG (400)  /* buffer size */
-#define WWV (0)       /* WWV encoder */
-#define IRIG (1)      /* IRIG-B encoder */
-#define OFF (0)       /* zero amplitude */
-#define LOW (1)       /* low amplitude */
-#define HIGH (2)      /* high amplitude */
-#define DATA0 (200)   /* WWV/H 0 pulse */
-#define DATA1 (500)   /* WWV/H 1 pulse */
-#define PI (800)      /* WWV/H PI pulse */
-#define M2 (2)        /* IRIG 0 pulse */
-#define M5 (5)        /* IRIG 1 pulse */
-#define M8 (8)        /* IRIG PI pulse */
+#define BUFLNG (400) /* buffer size */
+#define WWV (0)      /* WWV encoder */
+#define IRIG (1)     /* IRIG-B encoder */
+#define OFF (0)      /* zero amplitude */
+#define LOW (1)      /* low amplitude */
+#define HIGH (2)     /* high amplitude */
+#define DATA0 (200)  /* WWV/H 0 pulse */
+#define DATA1 (500)  /* WWV/H 1 pulse */
+#define PI (800)     /* WWV/H PI pulse */
+#define M2 (2)       /* IRIG 0 pulse */
+#define M5 (5)       /* IRIG 1 pulse */
+#define M8 (8)       /* IRIG PI pulse */
 
 #define N_ELEMENTS(X) (sizeof X / sizeof X[0])
 
