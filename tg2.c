@@ -27,7 +27,6 @@
 #define ISSUE (23)
 #define ISSUE_DATE "2007-02-12"
 
-#define SECOND (8000) /* one second of 125-us samples */
 #define BUFLNG (400)  /* buffer size */
 #define WWV (0)       /* WWV encoder */
 #define IRIG (1)      /* IRIG-B encoder */
