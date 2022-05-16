@@ -1803,13 +1803,13 @@ void peep(int pulse, /* pulse length (ms) */
   PaError err = Pa_WriteStream(stream, buffer, n_samples);
   free(buffer);
   switch (err) {
-  case paOutputUnderflowed:
-    printf("underflow... sadness\n");
-    break;
-  case paNoError:
-    break;
-  default:
-    Die("failed to write to stream: %s\n", Pa_GetErrorText(err));
+    case paOutputUnderflowed:
+      printf("underflow... sadness\n");
+      break;
+    case paNoError:
+      break;
+    default:
+      Die("failed to write to stream: %s\n", Pa_GetErrorText(err));
   }
 }
 
