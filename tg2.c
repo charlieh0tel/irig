@@ -46,6 +46,7 @@
  * bits.
  *
  */
+#include <assert.h>
 #include <bsd/string.h>
 #include <ctype.h>
 #include <errno.h>
@@ -84,6 +85,8 @@
 #define M5 (5)        /* IRIG 1 pulse */
 #define M8 (8)        /* IRIG PI pulse */
 
+#define N_ELEMENTS(X) (sizeof X / sizeof X[0])
+
 #define NUL (0)
 
 #define SECONDS_PER_MINUTE (60)
@@ -91,25 +94,7 @@
 
 #define OUTPUT_DATA_STRING_LENGTH (200)
 
-/* Attempt at unmodulated - "high" */
-int u6000[] = {247, 247, 247, 247, 247, 247, 247, 247, 247, 247,  /*  0- 9 */
-               247, 247, 247, 247, 247, 247, 247, 247, 247, 247,  /* 10-19 */
-               247, 247, 247, 247, 247, 247, 247, 247, 247, 247,  /* 20-29 */
-               247, 247, 247, 247, 247, 247, 247, 247, 247, 247,  /* 30-39 */
-               247, 247, 247, 247, 247, 247, 247, 247, 247, 247,  /* 40-49 */
-               247, 247, 247, 247, 247, 247, 247, 247, 247, 247,  /* 50-59 */
-               247, 247, 247, 247, 247, 247, 247, 247, 247, 247,  /* 60-69 */
-               247, 247, 247, 247, 247, 247, 247, 247, 247, 247}; /* 70-79 */
-
-/* Attempt at unmodulated - "low" */
-int u3000[] = {119, 119, 119, 119, 119, 119, 119, 119, 119, 119,  /*  0- 9 */
-               119, 119, 119, 119, 119, 119, 119, 119, 119, 119,  /* 10-19 */
-               119, 119, 119, 119, 119, 119, 119, 119, 119, 119,  /* 20-29 */
-               119, 119, 119, 119, 119, 119, 119, 119, 119, 119,  /* 30-39 */
-               119, 119, 119, 119, 119, 119, 119, 119, 119, 119,  /* 40-49 */
-               119, 119, 119, 119, 119, 119, 119, 119, 119, 119,  /* 50-59 */
-               119, 119, 119, 119, 119, 119, 119, 119, 119, 119,  /* 60-69 */
-               119, 119, 119, 119, 119, 119, 119, 119, 119, 119}; /* 70-79 */
+#define N_WAVE_TABLE 80
 
 /*
  * Companded sine table amplitude 3000 units
@@ -328,11 +313,11 @@ void WWV_Second(int, int);                     /* send second */
 void WWV_SecondNoTick(int, int);               /* send second with no tick */
 void digit(int);                               /* encode digit */
 void peep(int, int, int);                      /* send cycles */
-void poop(int, int, int, int);                 /* Generate unmodulated from similar tables */
 void delay(int);                               /* delay samples */
 int ConvertMonthDayToDayOfYear(int, int, int); /* Calc day of year from year month & day */
 void Help(void);                               /* Usage message */
 void ReverseString(char *);
+void WriteAudio(char *buffer, int length);
 
 /*
  * Extern declarations, don't know why not in headers
@@ -489,10 +474,6 @@ int main(int argc, char **argv) {
   /* /Flag for indication of a DST switch pending in IEEE 1344 */
   int DstPendingFlag = FALSE;
 
-  /* Attempt at unmodulated */
-  int Unmodulated = FALSE;
-  int UnmodulatedInverted = FALSE;
-
   /* Offset to actual time value sent. */
   float UseOffsetHoursFloat;
   int UseOffsetSecondsInt = 0;
@@ -514,6 +495,9 @@ int main(int argc, char **argv) {
   int deviceNum = -1;
 
   float RatioError;
+
+  assert(N_ELEMENTS(c3000) == N_WAVE_TABLE);
+  assert(N_ELEMENTS(c6000) == N_WAVE_TABLE);
 
   CommandName = argv[0];
 
@@ -751,30 +735,6 @@ int main(int argc, char **argv) {
       IrigIncludeIeee = TRUE;
       break;
 
-    case '4':
-      printf(
-          "\nFormat is unmodulated IRIG with IEEE-1344 (BCD year coded, and "
-          "more control functions)...\n\n");
-      encode = IRIG;
-      IrigIncludeYear = TRUE;
-      IrigIncludeIeee = TRUE;
-
-      Unmodulated = TRUE;
-      UnmodulatedInverted = FALSE;
-      break;
-
-    case '5':
-      printf(
-          "\nFormat is inverted unmodulated IRIG with IEEE-1344 (BCD year "
-          "coded, and more control functions)...\n\n");
-      encode = IRIG;
-      IrigIncludeYear = TRUE;
-      IrigIncludeIeee = TRUE;
-
-      Unmodulated = TRUE;
-      UnmodulatedInverted = TRUE;
-      break;
-
     case 'w':
       printf("\nFormat is WWV(H)...\n\n");
       encode = WWV;
@@ -795,7 +755,7 @@ int main(int argc, char **argv) {
 
   PaError err;
   err = Pa_Initialize();
-  if (err != paNoError) Die("Pa_Initialize failed");
+  if (err != paNoError) Die("Pa_Initialize failed: %s\n", Pa_GetErrorText(err));
 
   int numDevices = Pa_GetDeviceCount();
   if (numDevices < 0) Die("no audio devices");
@@ -830,7 +790,7 @@ int main(int argc, char **argv) {
                       paClipOff, /* we won't output out of range samples so don't bother clipping them */
                       NULL,      /* no callback, use blocking API */
                       NULL);     /* no callback, so no callback userData */
-  if (err != paNoError) Die("Pa_OpenStream failed");
+  if (err != paNoError) Die("Pa_OpenStream failed: %s\n", Pa_GetErrorText(err));
 
   const PaStreamInfo *info = Pa_GetStreamInfo(stream);
   if (info == NULL) Die("failed to get stream info");
@@ -842,6 +802,10 @@ int main(int argc, char **argv) {
     Die("Unable to set sample rate to %f, result was %f, more than 0.1 percent, aborting...\n\n",
 	SetSampleRate, info->sampleRate);
   
+  printf("Starting stream\n");
+  err = Pa_StartStream(stream);
+  if (err != paNoError)
+    Die("Pa_StartStream failed: %s\n", Pa_GetErrorText(err));
 
   /*
    * Unless specified otherwise, read the system clock and
@@ -951,9 +915,6 @@ int main(int argc, char **argv) {
       }
       break;
   }
-
-  err = Pa_StartStream(stream);
-  if (err != paNoError) Die("Pa_StartStream failed");
 
   /*
    * Run the signal generator to generate new timecode strings
@@ -1397,82 +1358,44 @@ int main(int argc, char **argv) {
               if ((FrameNumber == 5) && ((BitNumber % 10) > 1)) {
                 if (RateCorrection < 0) {  // Need to remove cycles to catch up.
                   if ((HexValue & arg) != 0) {
-                    if (Unmodulated) {
-                      poop(M5, 1000, HIGH, UnmodulatedInverted);
-                      poop(M5 - 1, 1000, LOW, UnmodulatedInverted);
+		    peep(M5, 1000, HIGH);
+		    peep(M5 - 1, 1000, LOW);
 
-                      TotalCyclesRemoved += 1;
-                    } else {
-                      peep(M5, 1000, HIGH);
-                      peep(M5 - 1, 1000, LOW);
-
-                      TotalCyclesRemoved += 1;
-                    }
+		    TotalCyclesRemoved += 1;
                     strlcat(OutputDataString, "x", OUTPUT_DATA_STRING_LENGTH);
                   } else {
-                    if (Unmodulated) {
-                      poop(M2, 1000, HIGH, UnmodulatedInverted);
-                      poop(M8 - 1, 1000, LOW, UnmodulatedInverted);
+		    peep(M2, 1000, HIGH);
+		    peep(M8 - 1, 1000, LOW);
 
-                      TotalCyclesRemoved += 1;
-                    } else {
-                      peep(M2, 1000, HIGH);
-                      peep(M8 - 1, 1000, LOW);
-
-                      TotalCyclesRemoved += 1;
-                    }
+		    TotalCyclesRemoved += 1;
                     strlcat(OutputDataString, "o", OUTPUT_DATA_STRING_LENGTH);
                   }
                 }                            // End of true clause for "if  (RateCorrection < 0)"
                 else {                       // Else clause for "if  (RateCorrection < 0)"
                   if (RateCorrection > 0) {  // Need to add cycles to slow back down.
                     if ((HexValue & arg) != 0) {
-                      if (Unmodulated) {
-                        poop(M5, 1000, HIGH, UnmodulatedInverted);
-                        poop(M5 + 1, 1000, LOW, UnmodulatedInverted);
-
-                        TotalCyclesAdded += 1;
-                      } else {
-                        peep(M5, 1000, HIGH);
-                        peep(M5 + 1, 1000, LOW);
-
-                        TotalCyclesAdded += 1;
-                      }
+		      peep(M5, 1000, HIGH);
+		      peep(M5 + 1, 1000, LOW);
+		      
+		      TotalCyclesAdded += 1;
                       strlcat(OutputDataString, "+", OUTPUT_DATA_STRING_LENGTH);
                     } else {
-                      if (Unmodulated) {
-                        poop(M2, 1000, HIGH, UnmodulatedInverted);
-                        poop(M8 + 1, 1000, LOW, UnmodulatedInverted);
+		      peep(M2, 1000, HIGH);
+		      peep(M8 + 1, 1000, LOW);
 
-                        TotalCyclesAdded += 1;
-                      } else {
-                        peep(M2, 1000, HIGH);
-                        peep(M8 + 1, 1000, LOW);
-
-                        TotalCyclesAdded += 1;
-                      }
+		      TotalCyclesAdded += 1;
                       strlcat(OutputDataString, "*", OUTPUT_DATA_STRING_LENGTH);
                     }
                   }       // End of true clause for "if  (RateCorrection > 0)"
                   else {  // Else clause for "if  (RateCorrection > 0)"
                     // Rate is OK, just do what you feel!
                     if ((HexValue & arg) != 0) {
-                      if (Unmodulated) {
-                        poop(M5, 1000, HIGH, UnmodulatedInverted);
-                        poop(M5, 1000, LOW, UnmodulatedInverted);
-                      } else {
-                        peep(M5, 1000, HIGH);
-                        peep(M5, 1000, LOW);
-                      }
+		      peep(M5, 1000, HIGH);
+		      peep(M5, 1000, LOW);
                       strlcat(OutputDataString, "1", OUTPUT_DATA_STRING_LENGTH);
                     } else {
-                      if (Unmodulated) {
-                        poop(M2, 1000, HIGH, UnmodulatedInverted);
-                        poop(M8, 1000, LOW, UnmodulatedInverted);
-                      } else {
-                        peep(M2, 1000, HIGH);
-                        peep(M8, 1000, LOW);
-                      }
+		      peep(M2, 1000, HIGH);
+		      peep(M8, 1000, LOW);
                       strlcat(OutputDataString, "0", OUTPUT_DATA_STRING_LENGTH);
                     }
                   }   // End of else clause for "if  (RateCorrection > 0)"
@@ -1482,22 +1405,12 @@ int main(int argc, char **argv) {
               else {  // Else clause for "if  ((FrameNumber == 5) && (BitNumber
                       // == 8))"
                 if ((HexValue & arg) != 0) {
-                  if (Unmodulated) {
-                    poop(M5, 1000, HIGH, UnmodulatedInverted);
-                    poop(M5, 1000, LOW, UnmodulatedInverted);
-                  } else {
-                    peep(M5, 1000, HIGH);
-                    peep(M5, 1000, LOW);
-                  }
+		  peep(M5, 1000, HIGH);
+		  peep(M5, 1000, LOW);
                   strlcat(OutputDataString, "1", OUTPUT_DATA_STRING_LENGTH);
                 } else {
-                  if (Unmodulated) {
-                    poop(M2, 1000, HIGH, UnmodulatedInverted);
-                    poop(M8, 1000, LOW, UnmodulatedInverted);
-                  } else {
-                    peep(M2, 1000, HIGH);
-                    peep(M8, 1000, LOW);
-                  }
+		  peep(M2, 1000, HIGH);
+		  peep(M8, 1000, LOW);
                   strlcat(OutputDataString, "0", OUTPUT_DATA_STRING_LENGTH);
                 }
               }  // end of else clause for "if  ((FrameNumber == 5) &&
@@ -1506,13 +1419,8 @@ int main(int argc, char **argv) {
 
             case DECZ: /* decrement pointer and send zero bit */
               ptr--;
-              if (Unmodulated) {
-                poop(M2, 1000, HIGH, UnmodulatedInverted);
-                poop(M8, 1000, LOW, UnmodulatedInverted);
-              } else {
-                peep(M2, 1000, HIGH);
-                peep(M8, 1000, LOW);
-              }
+	      peep(M2, 1000, HIGH);
+	      peep(M8, 1000, LOW);
               strlcat(OutputDataString, "-", OUTPUT_DATA_STRING_LENGTH);
               break;
 
@@ -1523,13 +1431,8 @@ int main(int argc, char **argv) {
                            decrement pointer */
             case MIN:   /* send "second start" marker/position indicator IM/PI bit
                          */
-              if (Unmodulated) {
-                poop(arg, 1000, HIGH, UnmodulatedInverted);
-                poop(10 - arg, 1000, LOW, UnmodulatedInverted);
-              } else {
-                peep(arg, 1000, HIGH);
-                peep(10 - arg, 1000, LOW);
-              }
+	      peep(arg, 1000, HIGH);
+	      peep(10 - arg, 1000, LOW);
               strlcat(OutputDataString, ".", OUTPUT_DATA_STRING_LENGTH);
               break;
 
@@ -1872,6 +1775,14 @@ int main(int argc, char **argv) {
   return (0);
 }
 
+
+void WriteAudio(char *buffer, int length) {
+  PaError err = Pa_WriteStream(stream, buffer, length);
+  if (err != paNoError)
+    Die("failed to write to stream: %s\n", Pa_GetErrorText(err));
+}
+
+
 /*
  * Generate WWV/H 0 or 1 data pulse.
  */
@@ -1980,53 +1891,10 @@ void peep(int pulse, /* pulse length (ms) */
         buffer[bufcnt++] = ~0;
     }
     if (bufcnt >= BUFLNG) {
-      Pa_WriteStream(stream, buffer, BUFLNG);
+      WriteAudio(buffer, BUFLNG);
       bufcnt = 0;
     }
-    j = (j + increm) % 80;
-  }
-}
-
-/*
- * Generate unmodulated from similar tables.
- */
-void poop(int pulse,   /* pulse length (ms) */
-          int freq,    /* frequency (Hz) */
-          int amp,     /* amplitude */
-          int inverted /* is upside down */
-) {
-  int increm; /* phase increment */
-  int i, j;
-
-  if (amp == OFF || freq == 0)
-    increm = 10;
-  else
-    increm = freq / 100;
-  j = 0;
-  for (i = 0; i < pulse * 8; i++) {
-    switch (amp) {
-      case HIGH:
-        if (inverted)
-          buffer[bufcnt++] = ~u3000[j];
-        else
-          buffer[bufcnt++] = ~u6000[j];
-        break;
-
-      case LOW:
-        if (inverted)
-          buffer[bufcnt++] = ~u6000[j];
-        else
-          buffer[bufcnt++] = ~u3000[j];
-        break;
-
-      default:
-        buffer[bufcnt++] = ~0;
-    }
-    if (bufcnt >= BUFLNG) {
-      Pa_WriteStream(stream, buffer, BUFLNG);
-      bufcnt = 0;
-    }
-    j = (j + increm) % 80;
+    j = (j + increm) % N_WAVE_TABLE;
   }
 }
 
@@ -2040,10 +1908,10 @@ void delay(int Delay /* delay in samples */
   samples = Delay;
   memset(buffer, 0, BUFLNG);
   while (samples >= BUFLNG) {
-    Pa_WriteStream(stream, buffer, BUFLNG);
+    WriteAudio(buffer, BUFLNG);
     samples -= BUFLNG;
   }
-  Pa_WriteStream(stream, buffer, BUFLNG);
+  WriteAudio(buffer, samples);
 }
 
 /* Calc day of year from year month & day */
