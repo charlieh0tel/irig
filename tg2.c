@@ -701,8 +701,8 @@ int main(int argc, char **argv) {
   const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(deviceNum);
   printf("using device %s\n", deviceInfo->name);
   printf("default sample rate=%f\n", deviceInfo->defaultSampleRate);
-  printf("desired sample rate=%f\n", DesiredSampleRate);
   if (DesiredSampleRate > 0.0) {
+    printf("desired sample rate=%f\n", DesiredSampleRate);
     SampleRate = DesiredSampleRate;
   } else {
     SampleRate = deviceInfo->defaultSampleRate;
