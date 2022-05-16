@@ -94,31 +94,6 @@
 
 #define OUTPUT_DATA_STRING_LENGTH (200)
 
-#define N_WAVE_TABLE 80
-
-/*
- * Companded sine table amplitude 3000 units
- */
-int c3000[] = {1,   48,  63,  70,  78,  82,  85,  89,  92,  94,   /* 0-9 */
-               96,  98,  99,  100, 101, 101, 102, 103, 103, 103,  /* 10-19 */
-               103, 103, 103, 103, 102, 101, 101, 100, 99,  98,   /* 20-29 */
-               96,  94,  92,  89,  85,  82,  78,  70,  63,  48,   /* 30-39 */
-               129, 176, 191, 198, 206, 210, 213, 217, 220, 222,  /* 40-49 */
-               224, 226, 227, 228, 229, 229, 230, 231, 231, 231,  /* 50-59 */
-               231, 231, 231, 231, 230, 229, 229, 228, 227, 226,  /* 60-69 */
-               224, 222, 220, 217, 213, 210, 206, 198, 191, 176}; /* 70-79 */
-/*
- * Companded sine table amplitude 6000 units
- */
-int c6000[] = {1,   63,  78,  86,  93,  98,  101, 104, 107, 110,  /* 0-9 */
-               112, 113, 115, 116, 117, 117, 118, 118, 119, 119,  /* 10-19 */
-               119, 119, 119, 118, 118, 117, 117, 116, 115, 113,  /* 20-29 */
-               112, 110, 107, 104, 101, 98,  93,  86,  78,  63,   /* 30-39 */
-               129, 191, 206, 214, 221, 226, 229, 232, 235, 238,  /* 40-49 */
-               240, 241, 243, 244, 245, 245, 246, 246, 247, 247,  /* 50-59 */
-               247, 247, 247, 246, 246, 245, 245, 244, 243, 241,  /* 60-69 */
-               240, 238, 235, 232, 229, 226, 221, 214, 206, 191}; /* 70-79 */
-
 /*
  * Decoder operations at the end of each second are driven by a state
  * machine. The transition matrix consists of a dispatch table indexed
@@ -313,11 +288,10 @@ void WWV_Second(int, int);                     /* send second */
 void WWV_SecondNoTick(int, int);               /* send second with no tick */
 void digit(int);                               /* encode digit */
 void peep(int, int, int);                      /* send cycles */
-void delay(int);                               /* delay samples */
 int ConvertMonthDayToDayOfYear(int, int, int); /* Calc day of year from year month & day */
 void Help(void);                               /* Usage message */
 void ReverseString(char *);
-void WriteAudio(char *buffer, int length);
+void Delay(long ms);
 
 /*
  * Extern declarations, don't know why not in headers
@@ -350,6 +324,8 @@ PaStream *stream = NULL;
 int TotalSecondsCorrected = 0;
 int TotalCyclesAdded = 0;
 int TotalCyclesRemoved = 0;
+
+double SetSampleRate;
 
 void Die(const char *fmt, ...) {
   va_list vargs;
@@ -408,7 +384,6 @@ int main(int argc, char **argv) {
   int DayOfYear;
 
   int BitNumber;
-  double SetSampleRate;
   char FormatCharacter = '3'; /* Default is IRIG-B with IEEE 1344 extensions */
   char AsciiValue;
   int HexValue;
@@ -495,9 +470,6 @@ int main(int argc, char **argv) {
   int deviceNum = -1;
 
   float RatioError;
-
-  assert(N_ELEMENTS(c3000) == N_WAVE_TABLE);
-  assert(N_ELEMENTS(c6000) == N_WAVE_TABLE);
 
   CommandName = argv[0];
 
@@ -774,12 +746,11 @@ int main(int argc, char **argv) {
   printf("using device %s\n", deviceInfo->name);
   printf("default sample rate=%f\n", deviceInfo->defaultSampleRate);
 
-
   PaStreamParameters outputParameters;
   memset(&outputParameters, 0, sizeof outputParameters);
   outputParameters.device = deviceNum;
   outputParameters.channelCount = 1;
-  outputParameters.sampleFormat = paUInt8;
+  outputParameters.sampleFormat = paFloat32;
   outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
 
   err = Pa_IsFormatSupported(NULL, &outputParameters, SetSampleRate);
@@ -798,14 +769,13 @@ int main(int argc, char **argv) {
 
   double SampleRateDifference = fabs(info->sampleRate - SetSampleRate);
   /* Fixed allowable sample rate error 0.1% */
-  if (SampleRateDifference > (SetSampleRate/1000))
-    Die("Unable to set sample rate to %f, result was %f, more than 0.1 percent, aborting...\n\n",
-	SetSampleRate, info->sampleRate);
-  
+  if (SampleRateDifference > (SetSampleRate / 1000))
+    Die("Unable to set sample rate to %f, result was %f, more than 0.1 percent, aborting...\n\n", SetSampleRate,
+        info->sampleRate);
+
   printf("Starting stream\n");
   err = Pa_StartStream(stream);
-  if (err != paNoError)
-    Die("Pa_StartStream failed: %s\n", Pa_GetErrorText(err));
+  if (err != paNoError) Die("Pa_StartStream failed: %s\n", Pa_GetErrorText(err));
 
   /*
    * Unless specified otherwise, read the system clock and
@@ -833,12 +803,7 @@ int main(int argc, char **argv) {
     Year = TimeStructure->tm_year % 100;
     Second = TimeStructure->tm_sec;
 
-    /*
-     * Delay the first second so the generator is accurately
-     * aligned with the system clock within one sample (125
-     * microseconds ).
-     */
-    delay(SECOND - TimeValue.tv_usec * 8 / 1000);
+    Delay(1000L - (long)TimeValue.tv_usec / 1000L /* ms */);
   }
 
   StraightBinarySeconds = Second + (Minute * SECONDS_PER_MINUTE) + (Hour * SECONDS_PER_HOUR);
@@ -1358,44 +1323,44 @@ int main(int argc, char **argv) {
               if ((FrameNumber == 5) && ((BitNumber % 10) > 1)) {
                 if (RateCorrection < 0) {  // Need to remove cycles to catch up.
                   if ((HexValue & arg) != 0) {
-		    peep(M5, 1000, HIGH);
-		    peep(M5 - 1, 1000, LOW);
+                    peep(M5, 1000, HIGH);
+                    peep(M5 - 1, 1000, LOW);
 
-		    TotalCyclesRemoved += 1;
+                    TotalCyclesRemoved += 1;
                     strlcat(OutputDataString, "x", OUTPUT_DATA_STRING_LENGTH);
                   } else {
-		    peep(M2, 1000, HIGH);
-		    peep(M8 - 1, 1000, LOW);
+                    peep(M2, 1000, HIGH);
+                    peep(M8 - 1, 1000, LOW);
 
-		    TotalCyclesRemoved += 1;
+                    TotalCyclesRemoved += 1;
                     strlcat(OutputDataString, "o", OUTPUT_DATA_STRING_LENGTH);
                   }
                 }                            // End of true clause for "if  (RateCorrection < 0)"
                 else {                       // Else clause for "if  (RateCorrection < 0)"
                   if (RateCorrection > 0) {  // Need to add cycles to slow back down.
                     if ((HexValue & arg) != 0) {
-		      peep(M5, 1000, HIGH);
-		      peep(M5 + 1, 1000, LOW);
-		      
-		      TotalCyclesAdded += 1;
+                      peep(M5, 1000, HIGH);
+                      peep(M5 + 1, 1000, LOW);
+
+                      TotalCyclesAdded += 1;
                       strlcat(OutputDataString, "+", OUTPUT_DATA_STRING_LENGTH);
                     } else {
-		      peep(M2, 1000, HIGH);
-		      peep(M8 + 1, 1000, LOW);
+                      peep(M2, 1000, HIGH);
+                      peep(M8 + 1, 1000, LOW);
 
-		      TotalCyclesAdded += 1;
+                      TotalCyclesAdded += 1;
                       strlcat(OutputDataString, "*", OUTPUT_DATA_STRING_LENGTH);
                     }
                   }       // End of true clause for "if  (RateCorrection > 0)"
                   else {  // Else clause for "if  (RateCorrection > 0)"
                     // Rate is OK, just do what you feel!
                     if ((HexValue & arg) != 0) {
-		      peep(M5, 1000, HIGH);
-		      peep(M5, 1000, LOW);
+                      peep(M5, 1000, HIGH);
+                      peep(M5, 1000, LOW);
                       strlcat(OutputDataString, "1", OUTPUT_DATA_STRING_LENGTH);
                     } else {
-		      peep(M2, 1000, HIGH);
-		      peep(M8, 1000, LOW);
+                      peep(M2, 1000, HIGH);
+                      peep(M8, 1000, LOW);
                       strlcat(OutputDataString, "0", OUTPUT_DATA_STRING_LENGTH);
                     }
                   }   // End of else clause for "if  (RateCorrection > 0)"
@@ -1405,12 +1370,12 @@ int main(int argc, char **argv) {
               else {  // Else clause for "if  ((FrameNumber == 5) && (BitNumber
                       // == 8))"
                 if ((HexValue & arg) != 0) {
-		  peep(M5, 1000, HIGH);
-		  peep(M5, 1000, LOW);
+                  peep(M5, 1000, HIGH);
+                  peep(M5, 1000, LOW);
                   strlcat(OutputDataString, "1", OUTPUT_DATA_STRING_LENGTH);
                 } else {
-		  peep(M2, 1000, HIGH);
-		  peep(M8, 1000, LOW);
+                  peep(M2, 1000, HIGH);
+                  peep(M8, 1000, LOW);
                   strlcat(OutputDataString, "0", OUTPUT_DATA_STRING_LENGTH);
                 }
               }  // end of else clause for "if  ((FrameNumber == 5) &&
@@ -1419,8 +1384,8 @@ int main(int argc, char **argv) {
 
             case DECZ: /* decrement pointer and send zero bit */
               ptr--;
-	      peep(M2, 1000, HIGH);
-	      peep(M8, 1000, LOW);
+              peep(M2, 1000, HIGH);
+              peep(M8, 1000, LOW);
               strlcat(OutputDataString, "-", OUTPUT_DATA_STRING_LENGTH);
               break;
 
@@ -1431,8 +1396,8 @@ int main(int argc, char **argv) {
                            decrement pointer */
             case MIN:   /* send "second start" marker/position indicator IM/PI bit
                          */
-	      peep(arg, 1000, HIGH);
-	      peep(10 - arg, 1000, LOW);
+              peep(arg, 1000, HIGH);
+              peep(10 - arg, 1000, LOW);
               strlcat(OutputDataString, ".", OUTPUT_DATA_STRING_LENGTH);
               break;
 
@@ -1775,13 +1740,7 @@ int main(int argc, char **argv) {
   return (0);
 }
 
-
-void WriteAudio(char *buffer, int length) {
-  PaError err = Pa_WriteStream(stream, buffer, length);
-  if (err != paNoError)
-    Die("failed to write to stream: %s\n", Pa_GetErrorText(err));
-}
-
+void Delay(long ms) { peep(ms, 1000, OFF); }
 
 /*
  * Generate WWV/H 0 or 1 data pulse.
@@ -1869,49 +1828,36 @@ void peep(int pulse, /* pulse length (ms) */
           int freq,  /* frequency (Hz) */
           int amp    /* amplitude */
 ) {
-  int increm; /* phase increment */
-  int i, j;
+  double dpulse = pulse;
+  double dfreq = freq;
+  double damp;
 
-  if (amp == OFF || freq == 0)
-    increm = 10;
-  else
-    increm = freq / 100;
-  j = 0;
-  for (i = 0; i < pulse * 8; i++) {
-    switch (amp) {
-      case HIGH:
-        buffer[bufcnt++] = ~c6000[j];
-        break;
-
-      case LOW:
-        buffer[bufcnt++] = ~c3000[j];
-        break;
-
-      default:
-        buffer[bufcnt++] = ~0;
-    }
-    if (bufcnt >= BUFLNG) {
-      WriteAudio(buffer, BUFLNG);
-      bufcnt = 0;
-    }
-    j = (j + increm) % N_WAVE_TABLE;
+  switch (amp) {
+    case OFF:
+      damp = 0.;
+      break;
+    case LOW:
+      damp = 0.25;
+      break;
+    case HIGH:
+      damp = 0.75;
+      break;
+    default:
+      Die("???");
   }
-}
 
-/*
- * Delay for initial phasing
- */
-void delay(int Delay /* delay in samples */
-) {
-  int samples; /* samples remaining */
+  int n_samples = (int)(SetSampleRate * dpulse / 1000.);
 
-  samples = Delay;
-  memset(buffer, 0, BUFLNG);
-  while (samples >= BUFLNG) {
-    WriteAudio(buffer, BUFLNG);
-    samples -= BUFLNG;
+  float *buffer;
+  buffer = malloc(sizeof(float) * n_samples);
+
+  for (int i = 0; i < n_samples; i++) {
+    buffer[i] = damp * sin(dfreq * 2 * M_PI * ((double)i / SetSampleRate));
   }
-  WriteAudio(buffer, samples);
+  PaError err = Pa_WriteStream(stream, buffer, n_samples);
+  if (err != paNoError) Die("failed to write to stream: %s\n", Pa_GetErrorText(err));
+
+  free(buffer);
 }
 
 /* Calc day of year from year month & day */
