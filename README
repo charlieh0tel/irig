@@ -1,5 +1,4 @@
 IRIG-B (and WWV/H) timecode generator, based on tg2.c form NTP 4.3.91
 (9c75327c3796ff59ac648478cd4da8b205bceb77).
 
-TODO: switch to PortAudio.
-
+Now portaudio enabled.
