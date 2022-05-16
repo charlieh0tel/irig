@@ -1,51 +1,7 @@
 /*
  * tg.c generate WWV or IRIG signals for test
  */
-/*
- * This program can generate audio signals that simulate the WWV/H
- * broadcast timecode. Alternatively, it can generate the IRIG-B
- * timecode commonly used to synchronize laboratory equipment. It is
- * intended to test the WWV/H driver (refclock_wwv.c) and the IRIG
- * driver (refclock_irig.c) in the NTP driver collection.
- *
- * Besides testing the drivers themselves, this program can be used to
- * synchronize remote machines over audio transmission lines or program
- * feeds. The program reads the time on the local machine and sets the
- * initial epoch of the signal generator within one millisecond.
- * Alernatively, the initial epoch can be set to an arbitrary time. This
- * is useful when searching for bugs and testing for correct response to
- * a leap second in UTC. Note however, the ultimate accuracy is limited
- * by the intrinsic frequency error of the codec sample clock, which can
- # reach well over 100 PPM.
- *
- * The default is to route generated signals to the line output
- * jack; the s option on the command line routes these signals to the
- * internal speaker as well. The v option controls the speaker volume
- * over the range 0-255. The signal generator by default uses WWV
- * format; the h option switches to WWVH format and the i option
- * switches to IRIG-B format.
- *
- * Once started the program runs continuously. The default initial epoch
- * for the signal generator is read from the computer system clock when
- * the program starts. The y option specifies an alternate epoch using a
- * string yydddhhmmss, where yy is the year of century, ddd the day of
- * year, hh the hour of day and mm the minute of hour. For instance,
- * 1946Z on 1 January 2006 is 060011946. The l option lights the leap
- * warning bit in the WWV/H timecode, so is handy to check for correct
- * behavior at the next leap second epoch. The remaining options are
- * specified below under the Parse Options heading. Most of these are
- * for testing.
- *
- * During operation the program displays the WWV/H timecode (9 digits)
- * or IRIG timecode (20 digits) as each new string is constructed. The
- * display is followed by the BCD binary bits as transmitted. Note that
- * the transmissionorder is low-order first as the frame is processed
- * left to right. For WWV/H The leap warning L preceeds the first bit.
- * For IRIG the on-time marker M preceeds the first (units) bit, so its
- * code is delayed one bit and the next digit (tens) needs only three
- * bits.
- *
- */
+
 #include <assert.h>
 #include <bsd/string.h>
 #include <ctype.h>
@@ -325,7 +281,7 @@ int TotalSecondsCorrected = 0;
 int TotalCyclesAdded = 0;
 int TotalCyclesRemoved = 0;
 
-double SetSampleRate;
+double SampleRate;
 
 void Die(const char *fmt, ...) {
   va_list vargs;
@@ -482,9 +438,8 @@ int main(int argc, char **argv) {
    * Parse options
    */
   Year = 0;
-  SetSampleRate = SECOND;
 
-  while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
+  while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:stu:xy:z?")) != -1) {
     switch (temp) {
       case 'a':
         sscanf(optarg, "%d", &deviceNum);
@@ -598,10 +553,6 @@ int main(int argc, char **argv) {
         TimeQuality &= 0x0F;
         /*printf ("\nGot TimeQuality = 0x%1X...\n", TimeQuality);
          */
-        break;
-
-      case 'r': /* sample rate (nominally 8000, integer close to 8000 I hope) */
-        sscanf(optarg, "%lf", &SetSampleRate);
         break;
 
       case 's': /* set leap warning bit (WWV/H only) */
@@ -745,6 +696,7 @@ int main(int argc, char **argv) {
   const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(deviceNum);
   printf("using device %s\n", deviceInfo->name);
   printf("default sample rate=%f\n", deviceInfo->defaultSampleRate);
+  SampleRate = deviceInfo->defaultSampleRate;
 
   PaStreamParameters outputParameters;
   memset(&outputParameters, 0, sizeof outputParameters);
@@ -753,11 +705,11 @@ int main(int argc, char **argv) {
   outputParameters.sampleFormat = paFloat32;
   outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
 
-  err = Pa_IsFormatSupported(NULL, &outputParameters, SetSampleRate);
+  err = Pa_IsFormatSupported(NULL, &outputParameters, SampleRate);
   if (err != paFormatIsSupported) Die("Audio output format is not supported.");
 
   err = Pa_OpenStream(&stream, NULL, /* no input */
-                      &outputParameters, SetSampleRate, BUFLNG,
+                      &outputParameters, SampleRate, BUFLNG,
                       paClipOff, /* we won't output out of range samples so don't bother clipping them */
                       NULL,      /* no callback, use blocking API */
                       NULL);     /* no callback, so no callback userData */
@@ -766,12 +718,6 @@ int main(int argc, char **argv) {
   const PaStreamInfo *info = Pa_GetStreamInfo(stream);
   if (info == NULL) Die("failed to get stream info");
   printf("sample rate=%f\n", info->sampleRate);
-
-  double SampleRateDifference = fabs(info->sampleRate - SetSampleRate);
-  /* Fixed allowable sample rate error 0.1% */
-  if (SampleRateDifference > (SetSampleRate / 1000))
-    Die("Unable to set sample rate to %f, result was %f, more than 0.1 percent, aborting...\n\n", SetSampleRate,
-        info->sampleRate);
 
   printf("Starting stream\n");
   err = Pa_StartStream(stream);
@@ -903,7 +849,7 @@ int main(int argc, char **argv) {
           printf(
               " Adjusted by %2.1f%%, apparent send frequency is %4.2f Hz not "
               "%.3f Hz.\n\n",
-              RatioError * 100.0, (1.0 + RatioError) * SetSampleRate, SetSampleRate);
+              RatioError * 100.0, (1.0 + RatioError) * SampleRate, SampleRate);
         }
       } else
         printf("\n");
@@ -1111,7 +1057,7 @@ int main(int argc, char **argv) {
             printf(
                 " Adjusted by %2.1f%%, apparent send frequency is %4.2f Hz not "
                 "%.3f Hz.\n\n",
-                RatioError * 100.0, (1.0 + RatioError) * SetSampleRate, SetSampleRate);
+                RatioError * 100.0, (1.0 + RatioError) * SampleRate, SampleRate);
           }
         } else
           printf("\n");
@@ -1846,18 +1792,25 @@ void peep(int pulse, /* pulse length (ms) */
       Die("???");
   }
 
-  int n_samples = (int)(SetSampleRate * dpulse / 1000.);
+  int n_samples = (int)(SampleRate * dpulse / 1000.);
 
   float *buffer;
   buffer = malloc(sizeof(float) * n_samples);
 
   for (int i = 0; i < n_samples; i++) {
-    buffer[i] = damp * sin(dfreq * 2 * M_PI * ((double)i / SetSampleRate));
+    buffer[i] = damp * sin(dfreq * 2 * M_PI * ((double)i / SampleRate));
   }
   PaError err = Pa_WriteStream(stream, buffer, n_samples);
-  if (err != paNoError) Die("failed to write to stream: %s\n", Pa_GetErrorText(err));
-
   free(buffer);
+  switch (err) {
+  case paOutputUnderflowed:
+    printf("underflow... sadness\n");
+    break;
+  case paNoError:
+    break;
+  default:
+    Die("failed to write to stream: %s\n", Pa_GetErrorText(err));
+  }
 }
 
 /* Calc day of year from year month & day */
@@ -1956,9 +1909,6 @@ void Help(void) {
   printf(
       "\n         -q quality_code_hex            Set IEEE 1344 quality code "
       "(default 0)");
-  printf(
-      "\n         -r sample_rate                 Audio sample rate (default "
-      "8000)");
   printf(
       "\n         -s                             Set leap warning bit (WWV[H] "
       "only)");
