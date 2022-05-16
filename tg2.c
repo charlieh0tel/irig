@@ -424,6 +424,7 @@ int main(int argc, char **argv) {
   int RateCorrection;       // Aggregate flag for passing to subroutines.
   int EnableRateCorrection = TRUE;
   int deviceNum = -1;
+  float DesiredSampleRate = -1;
 
   float RatioError;
 
@@ -439,7 +440,7 @@ int main(int argc, char **argv) {
    */
   Year = 0;
 
-  while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:stu:xy:z?")) != -1) {
+  while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
     switch (temp) {
       case 'a':
         sscanf(optarg, "%d", &deviceNum);
@@ -553,6 +554,10 @@ int main(int argc, char **argv) {
         TimeQuality &= 0x0F;
         /*printf ("\nGot TimeQuality = 0x%1X...\n", TimeQuality);
          */
+        break;
+
+      case 'r':
+        sscanf(optarg, "%f", &DesiredSampleRate);
         break;
 
       case 's': /* set leap warning bit (WWV/H only) */
@@ -696,7 +701,12 @@ int main(int argc, char **argv) {
   const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(deviceNum);
   printf("using device %s\n", deviceInfo->name);
   printf("default sample rate=%f\n", deviceInfo->defaultSampleRate);
-  SampleRate = deviceInfo->defaultSampleRate;
+  printf("desired sample rate=%f\n", DesiredSampleRate);
+  if (DesiredSampleRate > 0.0) {
+    SampleRate = DesiredSampleRate;
+  } else {
+    SampleRate = deviceInfo->defaultSampleRate;
+  }
 
   PaStreamParameters outputParameters;
   memset(&outputParameters, 0, sizeof outputParameters);
@@ -1909,6 +1919,7 @@ void Help(void) {
   printf(
       "\n         -q quality_code_hex            Set IEEE 1344 quality code "
       "(default 0)");
+  printf("\n         -r rate                        Set sample rate (Hz)");
   printf(
       "\n         -s                             Set leap warning bit (WWV[H] "
       "only)");
