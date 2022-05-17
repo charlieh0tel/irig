@@ -699,12 +699,12 @@ int main(int argc, char **argv) {
 
   const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(deviceNum);
   printf("using device %s\n", deviceInfo->name);
-  printf("default sample rate=%f\n", deviceInfo->defaultSampleRate);
   if (DesiredSampleRate > 0.0) {
     printf("desired sample rate=%f\n", DesiredSampleRate);
     SampleRate = DesiredSampleRate;
   } else {
-    SampleRate = deviceInfo->defaultSampleRate;
+    // 44.1 KHz is most common but does not work.  Most devices support 48KHz.
+    SampleRate = 48000.;
   }
 
   PaStreamParameters outputParameters;
