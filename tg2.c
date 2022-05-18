@@ -422,7 +422,7 @@ int main(int argc, char **argv) {
   int RemoveCycle = FALSE;  // We are behind, remove cycle to slow down and get back in sync.
   int RateCorrection;       // Aggregate flag for passing to subroutines.
   int EnableRateCorrection = TRUE;
-  int deviceNum = -1;
+  char deviceNumOrName[512] = {0};
   float DesiredSampleRate = -1;
 
   float RatioError;
@@ -442,7 +442,7 @@ int main(int argc, char **argv) {
   while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
     switch (temp) {
       case 'a':
-        sscanf(optarg, "%d", &deviceNum);
+        strncpy(deviceNumOrName, optarg, sizeof deviceNumOrName);
         break;
 
       case 'b': /* Remove (delete) a leap second at the end of the specified
@@ -687,15 +687,25 @@ int main(int argc, char **argv) {
   int numDevices = Pa_GetDeviceCount();
   if (numDevices < 0) Die("no audio devices");
 
+  int deviceNum = -1;
   for (int i = 0; i < numDevices; i++) {
     const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(i);
     printf("%02d: %s\n", i, deviceInfo->name);
+    if (strcmp(deviceNumOrName, deviceInfo->name) == 0) {
+      deviceNum = i;
+    }
   }
 
   if (deviceNum < 0) {
-    deviceNum = Pa_GetDefaultOutputDevice();
-    if (deviceNum == paNoDevice) Die("No default output device");
+    if (*deviceNumOrName) {
+      sscanf(deviceNumOrName, "%d", &deviceNum);
+    } else {
+      deviceNum = Pa_GetDefaultOutputDevice();
+      if (deviceNum == paNoDevice) Die("No default output device");
+    }
   }
+
+  if (deviceNum < 0 || deviceNum >= numDevices) Die("Can't find device (bad device specification).");
 
   const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(deviceNum);
   printf("using device %s\n", deviceInfo->name);
@@ -1878,6 +1888,9 @@ void Help(void) {
       "\n  $Header: /home/dmw/src/IRIG_generation/ntp-4.2.2p3/util/RCS/tg.c,v "
       "1.28 2007/02/12 23:57:45 dmw Exp $");
   printf("\n\nUsage: %s [option]*", CommandName);
+  printf(
+      "\n         -a name|N                      Audio device by name or "
+      "number.");
   printf(
       "\n         -b yymmddhhmm                  Remove leap second at end of "
       "minute specified");
