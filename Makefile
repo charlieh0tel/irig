@@ -1,7 +1,7 @@
 CFLAGS := -Werror -Wall -Wextra -pedantic
 LDLIBS := -lbsd -lm
 
-CFLAGS += -fsanitize=undefined,address
+#CFLAGS += -fsanitize=undefined,address
 
 # Argh.  Raspbian 11 is missing pkg-config. 
 #CFLAGS += $(shell pkg-config --cflags portaudio-2.0)
