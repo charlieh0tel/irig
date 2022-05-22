@@ -895,15 +895,17 @@ int main(int argc, char **argv) {
   -----  |    -----------    |   ----  | -----------------
   |-------------------|\n"); printf ("|        |         |         | | |
   |                   |\n");*/
-      printf(
-          "|  StraightBinSecs  | IEEE_1344_Control |   Year  |    Day_of_Year  "
-          "  |  Hours  | Minutes |Seconds |\n");
-      printf(
-          "|  ---------------  | ----------------- |   ----  |    -----------  "
-          "  |  -----  | ------- |------- |\n");
-      printf(
-          "|                   |                   |         |                 "
-          "  |         |         |        |\n");
+      if (Verbose) {
+	printf(
+	       "|  StraightBinSecs  | IEEE_1344_Control |   Year  |    Day_of_Year  "
+	       "  |  Hours  | Minutes |Seconds |\n");
+	printf(
+	       "|  ---------------  | ----------------- |   ----  |    -----------  "
+	       "  |  -----  | ------- |------- |\n");
+	printf(
+	       "|                   |                   |         |                 "
+	       "  |         |         |        |\n");
+      }
     }
 
     if (RemoveCycle) {
