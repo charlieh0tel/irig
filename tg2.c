@@ -281,6 +281,7 @@ int TotalCyclesAdded = 0;
 int TotalCyclesRemoved = 0;
 
 double SampleRate;
+int AudioDelayMs = 17; /* my usb dongle, maybe not your codec */
 
 void Die(const char *fmt, ...) {
   va_list vargs;
@@ -439,7 +440,7 @@ int main(int argc, char **argv) {
    */
   Year = 0;
 
-  while ((temp = getopt(argc, argv, "a:b:c:df:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
+  while ((temp = getopt(argc, argv, "a:b:c:dD:f:g:hHi:jk:l:o:q:r:stu:xy:z?")) != -1) {
     switch (temp) {
       case 'a':
         strncpy(deviceNumOrName, optarg, sizeof deviceNumOrName);
@@ -460,6 +461,10 @@ int main(int argc, char **argv) {
       case 'd': /* set DST for summer (WWV/H only) / start with DST active
                    (IRIG) */
         DstFlag++;
+        break;
+
+      case 'D': /* path dealy through audio system */
+        sscanf(optarg, "%d", &AudioDelayMs);
         break;
 
       case 'f': /* select format: i=IRIG-98 (default) 2=IRIG-2004
@@ -761,14 +766,26 @@ int main(int argc, char **argv) {
     else
       SecondsPartOfTime -= (time_t)(-UseOffsetSecondsInt);
 
-    TimeStructure = gmtime(&SecondsPartOfTime);
-    Minute = TimeStructure->tm_min;
-    Hour = TimeStructure->tm_hour;
-    DayOfYear = TimeStructure->tm_yday + 1;
-    Year = TimeStructure->tm_year % 100;
-    Second = TimeStructure->tm_sec;
+    if ((AudioDelayMs > 200) || (AudioDelayMs < 0)) Die("Bad value for audio delay (%d)", AudioDelayMs);
 
-    Delay(1000L - (long)TimeValue.tv_usec / 1000L /* ms */);
+    while (1) {
+      TimeStructure = gmtime(&SecondsPartOfTime);
+      Minute = TimeStructure->tm_min;
+      Hour = TimeStructure->tm_hour;
+      DayOfYear = TimeStructure->tm_yday + 1;
+      Year = TimeStructure->tm_year % 100;
+      Second = TimeStructure->tm_sec;
+
+      int ms = (int)(1000L - (long)TimeValue.tv_usec / 1000L) /* ms */;
+      ms -= AudioDelayMs;
+      if (ms == 0) {
+        break;
+      }
+      if (ms > 0) {
+        Delay(ms);
+        break;
+      }
+    }
   }
 
   StraightBinarySeconds = Second + (Minute * SECONDS_PER_MINUTE) + (Hour * SECONDS_PER_HOUR);
