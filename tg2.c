@@ -546,18 +546,11 @@ int main(int argc, char **argv) {
           else
             OffsetHalf = 0;
         }
-
-        /*printf ("\nGot TimeOffset = %3.1f, OffsetSignBit = %d, OffsetOnes =
-           %d, OffsetHalf = %d...\n", TimeOffset, OffsetSignBit, OffsetOnes,
-           OffsetHalf);
-        */
         break;
 
       case 'q': /* Hex quality code 0 to 0x0F - 0 = maximum, 0x0F = no lock */
         sscanf(optarg, "%x", &TimeQuality);
         TimeQuality &= 0x0F;
-        /*printf ("\nGot TimeQuality = 0x%1X...\n", TimeQuality);
-         */
         break;
 
       case 'r':
@@ -847,18 +840,8 @@ int main(int argc, char **argv) {
         printf(
             "Numerical values are time order reversed in output to make it "
             "easier to read.\n");
-        /*                 111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999
-         */
-        /*       0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-         */
         printf("\n");
         printf("Legend of output codes:\n");
-        // printf ("\n");
-        // printf ("|  StraightBinSecs  | IEEE_1344_Control |   Year  |
-        // Day_of_Year    |  Hours  | Minutes |Seconds |\n");
-        // printf ("|  ---------------  | ----------------- |   ----  |
-        // -----------    |  -----  | ------- |------- |\n"); printf ("| | | |
-        // |         |         |        |\n");
       }
       break;
   }
@@ -890,11 +873,6 @@ int main(int argc, char **argv) {
       } else
         printf("\n");
 
-      /* printf ("|Seconds | Minutes |  Hours  |    Day_of_Year    |   Year  |
-  IEEE_1344_Control |  StraightBinSecs  |\n"); printf ("|------- | ------- |
-  -----  |    -----------    |   ----  | -----------------
-  |-------------------|\n"); printf ("|        |         |         | | |
-  |                   |\n");*/
       if (Verbose) {
 	printf(
 	       "|  StraightBinSecs  | IEEE_1344_Control |   Year  |    Day_of_Year  "
@@ -1136,20 +1114,9 @@ int main(int argc, char **argv) {
                            (DstFlag == 0 ? 0x00000 : 0x00008) | (OffsetSignBit == 0 ? 0x00000 : 0x00010) |
                            ((OffsetOnes & 0x0F) << 5) | (OffsetHalf == 0 ? 0x00000 : 0x00200) |
                            ((TimeQuality & 0x0F) << 10);
-        /* if  (Verbose)
-                printf ("\nDstFlag = %d, OffsetSignBit = %d, OffsetOnes = %d,
-           OffsetHalf = %d, TimeQuality = 0x%1.1X ==> ControlFunctions =
-           0x%5.5X...", DstFlag, OffsetSignBit, OffsetOnes, OffsetHalf,
-           TimeQuality, ControlFunctions);
-        */
       } else
         ControlFunctions = 0;
 
-      /*
-                                    YearDay HourMin Sec
-      snprintf(code, sizeof(code), "%04x%04d%06d%02d%02d%02d",
-              0, Year, DayOfYear, Hour, Minute, Second);
-      */
       if (IrigIncludeYear) {
         snprintf(ParityString, sizeof(ParityString), "%04X%02d%04d%02d%02d%02d", ControlFunctions & 0x7FFF, Year,
                  DayOfYear, Hour, Minute, Second);
