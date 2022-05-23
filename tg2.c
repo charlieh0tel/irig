@@ -874,15 +874,15 @@ int main(int argc, char **argv) {
         printf("\n");
 
       if (Verbose) {
-	printf(
-	       "|  StraightBinSecs  | IEEE_1344_Control |   Year  |    Day_of_Year  "
-	       "  |  Hours  | Minutes |Seconds |\n");
-	printf(
-	       "|  ---------------  | ----------------- |   ----  |    -----------  "
-	       "  |  -----  | ------- |------- |\n");
-	printf(
-	       "|                   |                   |         |                 "
-	       "  |         |         |        |\n");
+        printf(
+            "|  StraightBinSecs  | IEEE_1344_Control |   Year  |    Day_of_Year  "
+            "  |  Hours  | Minutes |Seconds |\n");
+        printf(
+            "|  ---------------  | ----------------- |   ----  |    -----------  "
+            "  |  -----  | ------- |------- |\n");
+        printf(
+            "|                   |                   |         |                 "
+            "  |         |         |        |\n");
       }
     }
 
@@ -1886,6 +1886,7 @@ void Help(void) {
   printf(
       "\n         -d                             Start with IEEE 1344 DST "
       "active");
+  printf("\n         -D milliseconds                Latency through the codec");
   printf(
       "\n         -f format_type                 i = Modulated IRIG-B 1998 (no "
       "year coded)");
