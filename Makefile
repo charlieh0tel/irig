@@ -18,5 +18,5 @@ style:
 .PHONY: style
 
 clean:
-	-rm -f tg2.c
+	-rm -f tg2
 .PHONY: clean
