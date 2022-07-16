@@ -16,3 +16,7 @@ tg2: tg2.c
 style:
 	clang-format --style="{BasedOnStyle: Google, ColumnLimit: 120}" -i tg2.c
 .PHONY: style
+
+clean:
+	-rm -f tg2.c
+.PHONY: clean
