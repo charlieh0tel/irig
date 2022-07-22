@@ -3,7 +3,6 @@
  */
 
 #include <assert.h>
-#include <bsd/string.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -247,6 +246,8 @@ int ConvertMonthDayToDayOfYear(int, int, int); /* Calc day of year from year mon
 void Help(void);                               /* Usage message */
 void ReverseString(char *);
 void Delay(long ms);
+size_t strlcat(char *dst, const char *src, size_t size);
+
 
 /*
  * Extern declarations, don't know why not in headers
@@ -1957,4 +1958,29 @@ void ReverseString(char *str) {
     str[IndexCounter - 1] = str[StringLength - IndexCounter];
     str[StringLength - IndexCounter] = TemporaryCharacter;
   }
+}
+
+size_t strlcat(char *dst, const char *src, size_t size) {
+  char *d = dst;
+  const char *s = src;
+  size_t n = size;
+  size_t dlen;
+
+  while (n-- != 0 && *d != '\0')
+    d++;
+  dlen = d - dst;
+  n = size - dlen;
+
+  if (n == 0)
+    return dlen + strlen(s);
+  while (*s != '\0') {
+    if (n != 1) {
+      *d++ = *s;
+      n--;
+    }
+    s++;
+  }
+  *d = '\0';
+
+  return dlen + (s - src);
 }

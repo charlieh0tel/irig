@@ -1,5 +1,5 @@
 CFLAGS := -Werror -Wall -Wextra -pedantic
-LDLIBS := -lbsd -lm
+LDLIBS := -lm
 
 #CFLAGS += -fsanitize=undefined,address
 
