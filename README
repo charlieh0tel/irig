@@ -6,6 +6,6 @@ Now portaudio enabled.   48 KHz sample rate works well.
 Tested on Ubuntu 21.10 and Raspbian 11.
 
 TODO:
-* Fix cycle slippage.
+* Fix cycle slippage -- this results in a serious problem over time.
 * Replace sin() call with lookup.
 * Make work with 44.1 KHz sample rate (but everythign seems to support 48 KHz).
